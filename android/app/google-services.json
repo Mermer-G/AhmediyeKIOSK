@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "566523224278",
+    "firebase_url": "https://ahmediye-kiosk-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "ahmediye-kiosk",
+    "storage_bucket": "ahmediye-kiosk.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:566523224278:android:df2b688d40ca26ffef2977",
+        "android_client_info": {
+          "package_name": "com.example.app1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBpYmgNNBszyvN8j8s7wuMcF88jxb2cqRE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
