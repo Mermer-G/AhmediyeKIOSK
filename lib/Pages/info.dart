@@ -22,13 +22,13 @@ class InfoPage extends StatelessWidget {
               ),
               margin: const EdgeInsets.symmetric(vertical: 8),
               child: ListTile(
-                title: Text(
+                title: SelectableText(
                   entry.key.toUpperCase(),
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                subtitle: Text(
+                subtitle: SelectableText(
                   entry.value,
                   style: const TextStyle(
                     fontSize: 16,
