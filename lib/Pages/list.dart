@@ -108,9 +108,7 @@ class _ListerPageState extends State<ListerPage> {
 
     
 
-    void _sort(int columnIndex) {
-      
-
+    void sort(int columnIndex) {
       setState(() {
         if (_sortColumnIndex == columnIndex) {
           // Aynı sütuna tekrar basıldı, sıralama yönünü değiştir
@@ -163,33 +161,6 @@ class _ListerPageState extends State<ListerPage> {
       );
     }
 
-    Widget sortButton(
-      String text,
-      int index, 
-      bool asc,
-    ) {
-      return SizedBox(
-        width: 130,
-        child: ElevatedButton(
-          onPressed: () {
-            
-          },
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          child: Text(
-            text,
-            textAlign: TextAlign.center,
-            softWrap: true,
-          ),
-        ),
-      );
-    }
-
-
     return Scaffold(
       appBar: AppBar(
         title: Text('Data Table'),
@@ -204,7 +175,7 @@ class _ListerPageState extends State<ListerPage> {
           child: Row(
             children: [
               Expanded(
-                flex: 2,
+                flex: 4,
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: SingleChildScrollView(
@@ -238,7 +209,7 @@ class _ListerPageState extends State<ListerPage> {
                         return DataColumn(
                           label: Text(key.toUpperCase()),
                           onSort: (columnIndex, _) {
-                            _sort(columnIndex);
+                            sort(columnIndex);
                           } 
                         );
                       }).toList(),
@@ -259,7 +230,7 @@ class _ListerPageState extends State<ListerPage> {
                               ),
                             );
                           },
-                          color: MaterialStateColor.resolveWith((states) {
+                          color: WidgetStateColor.resolveWith((states) {
                             return index % 2 == 0 ? Colors.white : Colors.grey.shade200;
                           }),
                           cells: item.values.map((v) {
@@ -282,67 +253,36 @@ class _ListerPageState extends State<ListerPage> {
 
               Expanded(
                 flex: 2,
-                child: Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Container(
-                    width: double.infinity,
-                    height: double.infinity, // 🔥 BU ÖNEMLİ
-                    decoration: BoxDecoration(
-                      color: Colors.blueGrey,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
+                    child: Container(
+                      width: double.infinity,
+                      height: double.infinity, // 🔥 BU ÖNEMLİ
+                      decoration: BoxDecoration(
+                        color: const Color.fromARGB(255, 28, 132, 184),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          TextField(
+                            
 
-                        sectionTitle("Artan Sıralama", const Color(0xFF006110)),
-                          const SizedBox(height: 12),
-
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Wrap(
-                              spacing: 10,
-                              children: [
-                                sortButton("Duruma Göre", 0, false),
-                                sortButton("Gruba Göre", 1, false),
-                                sortButton("Yatakhaneye Göre", 2, false),
-                                sortButton("İsme Göre", 3, false),
-                                sortButton("Numaraya Göre", 4, false),
-                              ],
-                            ),
-                          ),
-
-                        const SizedBox(height: 30),
-
-                        sectionTitle("Azalan Sıralama", const Color(0xFF004E61)),
-                          const SizedBox(height: 12),
-
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Wrap(
-                              spacing: 10,
-                              children: [
-                                sortButton("Duruma Göre", 0, true),
-                                sortButton("Gruba Göre", 1, true),
-                                sortButton("Yatakhaneye Göre", 2, true),
-                                sortButton("İsme Göre", 3, true),
-                                sortButton("Numaraya Göre", 4, true),
-                              ],
-                            ),
                           ),
 
 
-                        const SizedBox(height: 40),
-
-                        ElevatedButton(
-                          onPressed: () {},
-                          child: const Text("Buton"),
-                        ),
-                      ],
-                    )
+                          ElevatedButton(
+                            onPressed: () {},
+                            child: const Text("Buton"),
+                          ),
+                        ],
+                      )
+                    ),
                   ),
                 ),
               )
