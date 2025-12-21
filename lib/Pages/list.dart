@@ -97,7 +97,7 @@ class _ListerPageState extends State<ListerPage> {
   Future<void> _fetchDataFromFirebase() async {
     try {
       print('===== VERİ ÇEKME BAŞLADI =====');
-      final DataSnapshot? snapshot = await _databaseService.read(path: 'TALEBE');
+      final DataSnapshot? snapshot = await _databaseService.read(path: 'STUDENT');
       final raw = snapshot?.value;
 
       // print("Gelen veri tipi: ${raw.runtimeType}");

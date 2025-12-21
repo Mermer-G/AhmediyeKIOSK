@@ -14,7 +14,7 @@ class _FilterExampleState extends State<FilterExample> {
 
   String nameFilter = "";
   String cityFilter = "";
-
+  
   @override
   Widget build(BuildContext context) {
     return Column(
