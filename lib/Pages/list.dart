@@ -176,17 +176,17 @@ class _ListerPageState extends State<ListerPage> {
 
     void applyFilterAndSort() {
       List<Map<String, String>> filtered = _allItems.where((item) {
-        final nameMatch = item['ADI SOYADI']
+        final nameMatch = item['Name']
             .toString()
             .toLowerCase()
             .contains(nameFilter.toLowerCase());
 
-        final groupMatch = item['GRUBU']
+        final groupMatch = item['Group']
             .toString()
             .toLowerCase()
             .contains(groupFilter.toLowerCase());
 
-        final numberMatch = item['NUMARASI']
+        final numberMatch = item['Number']
           .toString()
           .toLowerCase()
           .contains(numberFilter.toLowerCase());
@@ -235,6 +235,8 @@ class _ListerPageState extends State<ListerPage> {
 
       applyFilterAndSort();
     }
+
+    
 
     return Scaffold(
       appBar: AppBar(

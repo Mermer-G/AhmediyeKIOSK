@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../utils/database_service.dart';
 
 class InfoPage extends StatefulWidget {
   final List<Map<String, String>> data;
@@ -12,26 +14,37 @@ class InfoPage extends StatefulWidget {
   State<InfoPage> createState() => _InfoPageState();
 }
 
+const STATEIN = "Inside";
+const STATEOUT = "Outside";
+
 class _InfoPageState extends State<InfoPage> {
-  bool isInside = true;
-  DateTime? lastActionTime;
-  String? izinVerenHoca;
+  final dbService = DatabaseService();
 
   /// Tek öğrenci
   Map<String, String> get student => widget.data.first;
+  late bool isInside;
+  //TODO: These will change like the is inside and make a general method for these.
+  DateTime? lastActionTime;
+  String? izinVerenHoca;
+  void initializeIsInside() {
+    isInside = (student["State"]?.toLowerCase() == STATEIN.toLowerCase());
+  }
 
   bool get hasPhone =>
-      student["TELEFONU"] != null &&
-      student["TELEFONU"]!.trim().isNotEmpty;
+      student["Phone"] != null &&
+      student["Phone"]!.trim().isNotEmpty;
 
   @override
   void initState() {
     super.initState();
+    initializeIsInside();
     lastActionTime = DateTime.now();
   }
 
   @override
   Widget build(BuildContext context) {
+    
+    print("İsInside: $isInside");
     return Scaffold(
       appBar: AppBar(
         title: const Text("Öğrenci Bilgileri"),
@@ -46,7 +59,7 @@ class _InfoPageState extends State<InfoPage> {
           const SizedBox(height: 20),
 
           /// 🟨 BAĞLAM
-          _infoCard("Yatakhane", student["YATAKHANESİ"]),
+          _infoCard("Yatakhane", student["Dorm"]),
           _infoCard("Açıklama", student["Açıklama"]),
 
           const SizedBox(height: 20),
@@ -77,18 +90,18 @@ class _InfoPageState extends State<InfoPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              student["ADI SOYADI"] ?? "—",
+              student["Name"] ?? "—",
               style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
-            Text("Grup: ${student["GRUBU"] ?? "—"}"),
-            Text("Numara: ${student["NUMARASI"] ?? "—"}"),
+            Text("Grup: ${student["Group"] ?? "—"}"),
+            Text("Numara: ${student["Number"] ?? "—"}"),
             const SizedBox(height: 8),
             Chip(
-              label: Text(student["DURUMU"] ?? "—"),
+              label: Text(student["State"] ?? "—"),
             ),
           ],
         ),
@@ -96,6 +109,88 @@ class _InfoPageState extends State<InfoPage> {
     );
   }
 
+  // ────────────────────────────────
+  // Entry window
+  Future<bool> showEntry(BuildContext context, Map<String, String> data) async {
+    final sebepCtrl = TextEditingController();
+    final hocaCtrl = TextEditingController();
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Talebe Dışarı Çıkıyor"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Çıkış Tarihi:\n${DateTime.now()}",
+                style: const TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+              const SizedBox(height: 12),
+
+              TextField(
+                controller: sebepCtrl,
+                decoration: const InputDecoration(
+                  labelText: "Sebep",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              TextField(
+                controller: hocaCtrl,
+                decoration: const InputDecoration(
+                  labelText: "İzin Alınan Hoca",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, false); // ❌ iptal
+              },
+              child: const Text("İptal"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final kayit = {
+                  "Group": data["Group"] ?? "",
+                  "Number": data["Number"] ?? "",
+                  "Exit": DateFormat("dd.MM.yyyy HH:mm").format(DateTime.now()),
+                  "Entry": "",
+                  "Reason": sebepCtrl.text,
+                  "Permission": hocaCtrl.text,
+                };
+
+                final group = data["Group"] ?? "";
+                final number = data["Number"] ?? "";
+                String path = "Entry/$group$number";
+
+                //Entry kaydı oluştur
+                dbService.add(path: path, data: kayit);
+
+                //Student içerisinde veriyi bul
+                path = "STUDENT/${group}_$number";
+
+                //State değiştir
+                dbService.update(path: path, data: {"State": STATEOUT});
+
+                izinVerenHoca = hocaCtrl.text;
+                data["DURUMU"] = "Dışarıda";
+                Navigator.pop(context, true); // ✅ başarılı
+              },
+              child: const Text("Çıkışı Kaydet"),
+            ),
+          ],
+        );
+      },
+    );
+
+  return result ?? false;
+}
   // ────────────────────────────────
   // BİLGİ SATIRI
   Widget _infoCard(String title, String? value) {
@@ -186,11 +281,41 @@ class _InfoPageState extends State<InfoPage> {
 
   // ────────────────────────────────
   // STATE
-  void _toggleStatus() {
+  void _toggleStatus() async {
+    print("isInside: $isInside");
+    if (!isInside) {
+      // Dışardayken direkt içeri gir
+
+
+      setState(() {
+        isInside = true;
+        student["State"] = STATEIN;
+      });
+        //Student içerisinde veriyi bul
+        String? path = "STUDENT/${student["Group"]}_${student["Number"]}";
+
+        //State değiştir
+        dbService.update(path: path, data: {"State": STATEIN});
+
+        //Entry içerisinde veriyi bul
+        path = "Entry/${student["Group"]}${student["Number"]}";
+        
+        //State değiştir
+        String? futurePath = await dbService.getLastEntryKey(path);
+        path = path + "/" + futurePath!;
+
+        dbService.updateNullable(path: path, data: {"Entry": DateFormat("dd.MM.yyyy HH:mm").format(DateTime.now())});
+      return;
+    }
+
+    // İçerideyse dışarı çıkış için onay al
+    bool apply = await showEntry(context, student);
+
+    if (!apply) return; // Onay yoksa iptal et
+
     setState(() {
-      isInside = !isInside;
-      lastActionTime = DateTime.now();
-      if (!isInside) izinVerenHoca = "Ahmet Hoca"; // mock
+      // Dışarı çıkıyor
+      isInside = false;
     });
   }
 
