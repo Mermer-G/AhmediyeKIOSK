@@ -1,3 +1,4 @@
+import 'package:app1/utils/filter_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:app1/utils/test.dart';
 import 'list.dart';
@@ -146,7 +147,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(12),
-                              onTap: () => debugPrint('Third tapped'),
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => (FilterExample()))),
                               child: Center(
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,

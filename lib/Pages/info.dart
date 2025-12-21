@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class InfoPage extends StatelessWidget {
-  final Map<String, String> data;
+  final List<Map<String, String>> data;
 
   const InfoPage({super.key, required this.data});
 
@@ -14,28 +14,30 @@ class InfoPage extends StatelessWidget {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(
-          children: data.entries.map((entry) {
-            return Card(
-              elevation: 3,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              child: ListTile(
-                title: SelectableText(
-                  entry.key.toUpperCase(),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
+          children: data.expand((map) {
+            return map.entries.map((entry) {
+              return Card(
+                elevation: 3,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                child: ListTile(
+                  title: SelectableText(
+                    entry.key.toUpperCase(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: SelectableText(
+                    entry.value,
+                    style: const TextStyle(
+                      fontSize: 16,
+                    ),
                   ),
                 ),
-                subtitle: SelectableText(
-                  entry.value,
-                  style: const TextStyle(
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-            );
+              );
+            });
           }).toList(),
         ),
       ),

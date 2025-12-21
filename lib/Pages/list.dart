@@ -10,23 +10,85 @@ class ListerPage extends StatefulWidget {
   State<ListerPage> createState() => _ListerPageState();
 }
 
+class FilterTextField extends StatelessWidget {
+  final String title;
+  final String hint;
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+
+  const FilterTextField({
+    super.key,
+    required this.title,
+    required this.controller,
+    required this.onChanged,
+    this.hint = "Filtrele...",
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 5),
+        Center(
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+            ),
+          ),
+        ),
+        const SizedBox(height: 5),
+        TextField(
+          controller: controller,
+          onChanged: onChanged,
+          decoration: InputDecoration(
+            hintText: hint,
+            prefixIcon: const Icon(Icons.search),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            isDense: true,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _ListerPageState extends State<ListerPage> {
-  List<Map<String, String>> _items = [];
+  List<Map<String, String>> _allItems = []; // ORİJİNAL veri
+  List<Map<String, String>> _items = [];    // EKRANDA GÖSTERİLEN
   // int? _selectedIndex;
   bool _isLoading = true;
   String? _errorMessage;
   final DatabaseService _databaseService = DatabaseService();
   // Bu metod çağrılır sıralama butonuna basıldığında
-    int _sortColumnIndex = 0;
-    bool _sortAscending = false;
+  int _sortColumnIndex = 0;
+  bool _sortAscending = false;
+  
+  late final List<String> _columns;
 
+  //filter text fields
+  final nameController = TextEditingController();
+  final groupController = TextEditingController();
+  final stateController = TextEditingController();
+  final numberController = TextEditingController();
+  String nameFilter = "";
+  String groupFilter = "";
+  String stateFilter = "";
+  String numberFilter = "";
 
   @override
   void initState() {
     super.initState();
     _fetchDataFromFirebase();
+    _columns = _allItems.isNotEmpty
+      ? _allItems.first.keys.toList()
+      : [];
   }
-
   @override
   void dispose() {
     super.dispose();
@@ -82,10 +144,17 @@ class _ListerPageState extends State<ListerPage> {
       }).toList();
 
       setState(() {
-        _items = normalized.cast<Map<String, String>>();
+        _allItems = normalized.map((map) {
+          return map.map((key, value) =>
+              MapEntry(key.toString(), value.toString()));
+        }).toList();
+
+        _items = List.from(_allItems); // 🔥 çok önemli
         _isLoading = false;
       });
-    } 
+      
+      } 
+      
     catch (e) {
       print('HATA: $e');
       setState(() {
@@ -94,7 +163,6 @@ class _ListerPageState extends State<ListerPage> {
       });
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -106,59 +174,66 @@ class _ListerPageState extends State<ListerPage> {
       return Center(child: Text(_errorMessage!));
     }
 
-    
+    void applyFilterAndSort() {
+      List<Map<String, String>> filtered = _allItems.where((item) {
+        final nameMatch = item['ADI SOYADI']
+            .toString()
+            .toLowerCase()
+            .contains(nameFilter.toLowerCase());
 
-    void sort(int columnIndex) {
-      setState(() {
-        if (_sortColumnIndex == columnIndex) {
-          // Aynı sütuna tekrar basıldı, sıralama yönünü değiştir
-          _sortAscending = !_sortAscending;
-          print("YESSS");
-        } else {
-          // Yeni sütuna basıldı, sıralama artan olsun
-          _sortAscending = true;
-          print("NOoo");
-        }
-        _sortColumnIndex = columnIndex;
-        final key = _items.first.keys.elementAt(columnIndex);
+        final groupMatch = item['GRUBU']
+            .toString()
+            .toLowerCase()
+            .contains(groupFilter.toLowerCase());
 
-        _items.sort((a, b) {
+        final numberMatch = item['NUMARASI']
+          .toString()
+          .toLowerCase()
+          .contains(numberFilter.toLowerCase());
+
+        return numberMatch && groupMatch && nameMatch;
+      }).toList();
+
+      if (filtered.isNotEmpty) {
+        final key = filtered.first.keys.elementAt(_sortColumnIndex!);
+
+        filtered.sort((a, b) {
           final aValue = a[key] ?? "";
           final bValue = b[key] ?? "";
 
-          final aNum = num.tryParse(aValue);
-          final bNum = num.tryParse(bValue);
+          final aNum = num.tryParse(aValue.toString());
+          final bNum = num.tryParse(bValue.toString());
 
           int compareResult;
 
           if (aNum != null && bNum != null) {
             compareResult = aNum.compareTo(bNum);
           } else {
-            compareResult = aValue.toString().toLowerCase().compareTo(bValue.toString().toLowerCase());
+            compareResult = aValue
+                .toString()
+                .toLowerCase()
+                .compareTo(bValue.toString().toLowerCase());
           }
 
           return _sortAscending ? compareResult : -compareResult;
         });
+      }
+
+      setState(() {
+        _items = filtered;
       });
     }
 
-    Widget sectionTitle(String text, Color color) {
-      return Container(
-        height: 46,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      );
+    void sort(int columnIndex) {
+      if (_sortColumnIndex == columnIndex) {
+        _sortAscending = !_sortAscending;
+      } else {
+        _sortAscending = true;
+      }
+
+      _sortColumnIndex = columnIndex;
+
+      applyFilterAndSort();
     }
 
     return Scaffold(
@@ -176,76 +251,81 @@ class _ListerPageState extends State<ListerPage> {
             children: [
               Expanded(
                 flex: 4,
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
+                child: Align(
+                  alignment: Alignment.topLeft,
                   child: SingleChildScrollView(
-                    scrollDirection: Axis.vertical,
-                    child: DataTable(
-                      sortColumnIndex: _sortColumnIndex,
-                      sortAscending: _sortAscending,
-                      showCheckboxColumn: false,
-                      headingRowColor: WidgetStateColor.resolveWith(
-                        (states) => Colors.blueGrey.shade100,
-                      ),
-                      dataRowColor: WidgetStateColor.resolveWith((states) {
-                        if (states.contains(WidgetState.selected)) {
-                          return Colors.blue.shade50;
-                        }
-                        return Colors.grey.shade50;
-                      }),
-                      headingTextStyle: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: Colors.black87,
-                      ),
-                      dataTextStyle: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.black87,
-                      ),
-                      columnSpacing: 30,
-                      horizontalMargin: 16,
-                      dividerThickness: 1.2,
-                      columns: _items.first.keys.map((key) {
-                        return DataColumn(
-                          label: Text(key.toUpperCase()),
-                          onSort: (columnIndex, _) {
-                            sort(columnIndex);
-                          } 
-                        );
-                      }).toList(),
-                                
-                      rows: _items.asMap().entries.map((entry) {
-                        final index = entry.key;
-                        final item = entry.value;
-                                
-                        return DataRow(
-                          onSelectChanged: (_) {
-                            print("🔵 Satıra tıklandı! Index: $index");
-                            print("🟢 Satır verisi: $item");
-                                
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => InfoPage(data: item),
-                              ),
-                            );
-                          },
-                          color: WidgetStateColor.resolveWith((states) {
-                            return index % 2 == 0 ? Colors.white : Colors.grey.shade200;
-                          }),
-                          cells: item.values.map((v) {
-                            return DataCell(
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 8.0,
-                                  horizontal: 4.0,
+                    scrollDirection: Axis.horizontal,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.vertical,
+                      child: DataTable(
+                        sortColumnIndex: _sortColumnIndex,
+                        sortAscending: _sortAscending,
+                        showCheckboxColumn: false,
+                        headingRowColor: WidgetStateColor.resolveWith(
+                          (states) => Colors.blueGrey.shade100,
+                        ),
+                        dataRowColor: WidgetStateColor.resolveWith((states) {
+                          if (states.contains(WidgetState.selected)) {
+                            return Colors.blue.shade50;
+                          }
+                          return Colors.grey.shade50;
+                        }),
+                        headingTextStyle: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: Colors.black87,
+                        ),
+                        dataTextStyle: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.black87,
+                        ),
+                        columnSpacing: 30,
+                        horizontalMargin: 16,
+                        dividerThickness: 1.2,
+                        columns: _allItems.first.keys.map((key) {
+                          return DataColumn(
+                            label: Text(key.toUpperCase()),
+                            onSort: (columnIndex, _) {
+                              sort(columnIndex);
+                            } 
+                          );
+                        }).toList(),
+                                  
+                        rows: _items.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final item = entry.value;
+                                  
+                          return DataRow(
+                            onSelectChanged: (_) {
+                              print("🔵 Satıra tıklandı! Index: $index");
+                              print("🟢 Satır verisi: $item");
+                                  
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => InfoPage(
+                                    data: [item], // 🔥 sadece seçilen satır
+                                  ),
                                 ),
-                                child: Text(v),
-                              ),
-                            );
-                          }).toList(),
-                        );
-                      }).toList(),
+                              );
+                            },
+                            color: WidgetStateColor.resolveWith((states) {
+                              return index % 2 == 0 ? Colors.white : Colors.grey.shade200;
+                            }),
+                            cells: item.values.map((v) {
+                              return DataCell(
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8.0,
+                                    horizontal: 4.0,
+                                  ),
+                                  child: Text(v),
+                                ),
+                              );
+                            }).toList(),
+                          );
+                        }).toList(),
+                      ),
                     ),
                   ),
                 ),
@@ -270,9 +350,31 @@ class _ListerPageState extends State<ListerPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          TextField(
-                            
+                          FilterTextField(
+                            title: "Numaraya Göre",
+                            controller: numberController,
+                            onChanged: (value) {
+                              numberFilter = value;
+                              applyFilterAndSort();
+                            }
+                          ),
 
+                          FilterTextField(
+                            title: "Gruba Göre",
+                            controller: groupController,
+                            onChanged: (value) {
+                              groupFilter = value;
+                              applyFilterAndSort();
+                            }
+                          ),
+
+                          FilterTextField(
+                            title: "İsme Göre",
+                            controller: nameController,
+                            onChanged: (value) {
+                              nameFilter = value;
+                              applyFilterAndSort();
+                            }
                           ),
 
 
