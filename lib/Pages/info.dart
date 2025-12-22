@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../utils/database_service.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 class InfoPage extends StatefulWidget {
   final List<Map<String, String>> data;
@@ -24,10 +25,52 @@ class _InfoPageState extends State<InfoPage> {
   Map<String, String> get student => widget.data.first;
   late bool isInside;
   //TODO: These will change like the is inside and make a general method for these.
-  DateTime? lastActionTime;
-  String? izinVerenHoca;
-  void initializeIsInside() {
+  DateTime? exitTime;
+  String? reason;
+  String? permission;
+  Future<void> initializeFields() async {
     isInside = (student["State"]?.toLowerCase() == STATEIN.toLowerCase());
+    
+    //TODO: Get this to work with local data.
+    //Entry içerisinde veriyi bul
+    String path = "Entry/${student["Group"]}${student["Number"]}";
+    String? futurePath = await dbService.getLastEntryKey(path);
+    path = path + "/" + futurePath! + "/Exit";
+    DataSnapshot? snapshot = await dbService.read(path: path);
+
+    if (snapshot != null && snapshot.value != null) {
+      String value = snapshot.value as String;
+
+      exitTime = DateFormat("dd.MM.yyyy HH:mm").parse(value);
+      print("exitTime: $exitTime");
+    }
+    else print("Could not get Exit Time");
+    
+    //TODO: Get this to work with local data.
+    path = "Entry/${student["Group"]}${student["Number"]}";
+    futurePath = await dbService.getLastEntryKey(path);
+    path = path + "/" + futurePath! + "/Reason";
+    snapshot = await dbService.read(path: path);
+
+    if (snapshot != null && snapshot.value != null) {
+      reason = snapshot.value as String;
+      print("Reason: $reason");
+    }
+    else print("Could not get Reason");
+
+    //TODO: Get this to work with local data.
+    path = "Entry/${student["Group"]}${student["Number"]}";
+    futurePath = await dbService.getLastEntryKey(path);
+    path = path + "/" + futurePath! + "/Permission";
+    snapshot = await dbService.read(path: path);
+
+    if (snapshot != null && snapshot.value != null) {
+      permission = snapshot.value as String;
+      print("Permission: $permission");
+    }
+    else print("Could not get Reason");
+
+    setState(() {});
   }
 
   bool get hasPhone =>
@@ -37,8 +80,8 @@ class _InfoPageState extends State<InfoPage> {
   @override
   void initState() {
     super.initState();
-    initializeIsInside();
-    lastActionTime = DateTime.now();
+    initializeFields();
+    
   }
 
   @override
@@ -60,7 +103,7 @@ class _InfoPageState extends State<InfoPage> {
 
           /// 🟨 BAĞLAM
           _infoCard("Yatakhane", student["Dorm"]),
-          _infoCard("Açıklama", student["Açıklama"]),
+          _infoCard("Açıklama", permission),
 
           const SizedBox(height: 20),
 
@@ -178,7 +221,7 @@ class _InfoPageState extends State<InfoPage> {
                 //State değiştir
                 dbService.update(path: path, data: {"State": STATEOUT});
 
-                izinVerenHoca = hocaCtrl.text;
+                reason = hocaCtrl.text;
                 data["DURUMU"] = "Dışarıda";
                 Navigator.pop(context, true); // ✅ başarılı
               },
@@ -228,8 +271,8 @@ class _InfoPageState extends State<InfoPage> {
             const SizedBox(height: 12),
             Text(
               isInside
-                  ? "Giriş zamanı: ${_formatTime(lastActionTime)}"
-                  : "Çıkış zamanı: ${_formatTime(lastActionTime)}\nİzin veren: ${izinVerenHoca ?? "—"}",
+                  ? "Giriş zamanı: ${_formatTime(exitTime)}"
+                  : "Çıkış zamanı: ${_formatTime(exitTime)}\nİzin veren: ${reason ?? "—"}",
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -282,7 +325,6 @@ class _InfoPageState extends State<InfoPage> {
   // ────────────────────────────────
   // STATE
   void _toggleStatus() async {
-    print("isInside: $isInside");
     if (!isInside) {
       // Dışardayken direkt içeri gir
 
