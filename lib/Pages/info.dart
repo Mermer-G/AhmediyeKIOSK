@@ -35,38 +35,48 @@ class _InfoPageState extends State<InfoPage> {
     //Entry içerisinde veriyi bul
     String path = "Entry/${student["Group"]}${student["Number"]}";
     String? futurePath = await dbService.getLastEntryKey(path);
-    path = path + "/" + futurePath! + "/Exit";
-    DataSnapshot? snapshot = await dbService.read(path: path);
+    DataSnapshot? snapshot;
+    if (futurePath != null){
+      path = path + "/" + futurePath! + "/Exit";
+      snapshot = await dbService.read(path: path);
+    }
 
     if (snapshot != null && snapshot.value != null) {
       String value = snapshot.value as String;
 
       exitTime = DateFormat("dd.MM.yyyy HH:mm").parse(value);
       print("exitTime: $exitTime");
+      snapshot = null;
     }
     else print("Could not get Exit Time");
     
     //TODO: Get this to work with local data.
     path = "Entry/${student["Group"]}${student["Number"]}";
     futurePath = await dbService.getLastEntryKey(path);
-    path = path + "/" + futurePath! + "/Reason";
-    snapshot = await dbService.read(path: path);
+    if(snapshot != null){
+      path = path + "/" + futurePath! + "/Reason";
+      snapshot = await dbService.read(path: path);
+    }
 
     if (snapshot != null && snapshot.value != null) {
       reason = snapshot.value as String;
       print("Reason: $reason");
+      snapshot = null;
     }
     else print("Could not get Reason");
 
     //TODO: Get this to work with local data.
     path = "Entry/${student["Group"]}${student["Number"]}";
     futurePath = await dbService.getLastEntryKey(path);
-    path = path + "/" + futurePath! + "/Permission";
-    snapshot = await dbService.read(path: path);
+    if (futurePath != null){
+      path = path + "/" + futurePath! + "/Permission";
+      snapshot = await dbService.read(path: path);
+    }
 
     if (snapshot != null && snapshot.value != null) {
       permission = snapshot.value as String;
       print("Permission: $permission");
+      snapshot = null;
     }
     else print("Could not get Reason");
 
