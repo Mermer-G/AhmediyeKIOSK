@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../Pages/list.dart';
+import '../Pages/studentList.dart';
 
 class FilterExample extends StatefulWidget {
   const FilterExample({super.key});

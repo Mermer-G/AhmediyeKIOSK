@@ -1,40 +1,83 @@
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 
-class CacheHelper {
-  static const String dataKey = "TALEBE_CACHE";
-  static const String timeKey = "TALEBE_CACHE_TIME";
+class _PendingJob {
+  final Future<void> Function() action;
+  Timer? timer;
 
-  static const Duration cacheDuration = Duration(seconds: 10);
+  _PendingJob(this.action);
+}
 
-  static Future<void> save(List<Map<String, String>> data) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(dataKey, jsonEncode(data));
-    await prefs.setInt(timeKey, DateTime.now().millisecondsSinceEpoch);
+class CacheHelper extends ChangeNotifier {
+  static final CacheHelper instance = CacheHelper._internal();
+  CacheHelper._internal();
+
+  _PendingJob? _pendingJob;
+
+  static const int _delaySeconds = 5;
+  int _remainingSeconds = 0;
+  Timer? _countdownTimer;
+
+  bool get hasPendingJob => _pendingJob != null;
+  int get remainingSeconds => _remainingSeconds;
+
+  void schedule(Future<void> Function() action) {
+    print("cache helper is called!");
+    _commitPending();
+
+    _pendingJob = _PendingJob(action);
+    _remainingSeconds = _delaySeconds;
+
+    notifyListeners();
+
+    // ⏱️ Geri sayım timer
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (timer) {
+        _remainingSeconds--;
+        notifyListeners();
+
+        if (_remainingSeconds <= 0) {
+          timer.cancel();
+        }
+      },
+    );
+
+    // ⏳ Asıl commit timer
+    _pendingJob!.timer = Timer(
+      const Duration(seconds: _delaySeconds),
+      () async {
+        await action();
+        _clearPending();
+      },
+    );
   }
 
-  static Future<List<Map<String, String>>> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString(dataKey);
-    if (jsonString == null) return [];
-
-    final decoded = jsonDecode(jsonString) as List;
-    return decoded.map((e) => Map<String, String>.from(e)).toList();
+  Future<void> commitNow() async {
+    await _commitPending();
   }
 
-  static Future<bool> isExpired() async {
-    final prefs = await SharedPreferences.getInstance();
-    final time = prefs.getInt(timeKey);
-    if (time == null) return true;
+  void cancelPending() {
+    _clearPending();
+  }
 
-    final last = DateTime.fromMillisecondsSinceEpoch(time);
-    if (DateTime.now().difference(last) > cacheDuration){
-      print("expired " + DateTime.now().toString());
-      return true;
+  Future<void> _commitPending() async {
+    if (_pendingJob != null) {
+      _pendingJob!.timer?.cancel();
+      _countdownTimer?.cancel();
+      await _pendingJob!.action();
+      _clearPending();
     }
-    else{
-      print("not expired " + DateTime.now().toString());
-      return false;
-    }
+  }
+
+  void _clearPending() {
+    _pendingJob?.timer?.cancel();
+    _countdownTimer?.cancel();
+    _pendingJob = null;
+    _remainingSeconds = 0;
+    notifyListeners();
   }
 }
+
+

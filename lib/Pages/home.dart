@@ -1,7 +1,8 @@
+import 'package:app1/Pages/entryList.dart';
 import 'package:app1/utils/filter_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:app1/utils/test.dart';
-import 'list.dart';
+import 'studentList.dart';
 import 'dart:async';
 
 class HomePage extends StatefulWidget {
@@ -24,6 +25,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    // DatabaseService().startAutoSync();
     _updateTime();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateTime());
   }
@@ -62,7 +64,7 @@ class _HomePageState extends State<HomePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Material( // Talebe Butonu
+                        Material( // Talebe Listesi Butonu
                           color: Colors.transparent,
                           child: Ink(
                             width: 100,
@@ -73,7 +75,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(12),
-                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ListerPage())),
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentListerPage())),
                               child: Center(
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
@@ -99,7 +101,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                         SizedBox(width: 12),
-                        Material( // Hoca Butonu
+                        Material( // Giriş Çıkış Listesi Butonu
                           color: Colors.transparent,
                           child: Ink(
                             width: 100,
@@ -110,7 +112,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(12),
-                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => TestWeb())),
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => entryListerPage())),
                               child: Center(
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
@@ -122,7 +124,7 @@ class _HomePageState extends State<HomePage> {
                                     ),
                                     SizedBox(height: 4),
                                     Text(
-                                      "Hoca Listesi",
+                                      "Giriş-Çıkış Listesi",
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontSize: 11,
