@@ -1,6 +1,7 @@
 import 'dart:ffi';
 
 import 'package:app1/utils/database_models.dart';
+import 'package:app1/utils/synchronizer.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
@@ -326,6 +327,9 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
 
       _dbService.updateHive(path: st.entryID!, data: Entry.toFireBase(entry!), b: Hive.box(entryBox));
       _dbService.updateHive(path: "${st.group}_${st.number}", data: Student.toFireBase(st), b: Hive.box(studentBox));
+      setState(() {
+        
+      });
       
       return;
     }

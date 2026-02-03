@@ -1,10 +1,17 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:app1/utils/byte_calculator.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'cache_helper.dart';
 
 String studentBox = "StudentBox";
 String entryBox = "EntryBox";
+
+int byteSizeOf(Map<String, dynamic> data) {
+  final jsonString = jsonEncode(data);
+  return utf8.encode(jsonString).length;
+}
 
 class DatabaseService {
   final FirebaseDatabase firebaseDatabase = FirebaseDatabase.instance;
@@ -32,40 +39,42 @@ class DatabaseService {
   // FIREBASE UPDATE
   // ===============================
   Future<void> updateDB({
-    required String path,
-    required Map<String, String> data,
-  }) async {
-    final DatabaseReference ref = firebaseDatabase.ref().child(path);
-    await ref.update(data);
-  }
-
-  Future<void> updateNullableDB({
-    required String? path,
-    required Map<String, String> data,
-  }) async {
-    if (path == null || path.isEmpty) return;
-    await updateDB(path: path, data: data);
-  }
-
-  Future<void> addToDB({
+    //Table Name is included in this path. So it can not be null.
     required String path,
     required Map<String, dynamic> data,
   }) async {
-    final baseRef = firebaseDatabase.ref(path);
-    final newEntryRef = baseRef.push();
-    await newEntryRef.set(data);
+    final DatabaseReference ref = firebaseDatabase.ref().child(path);
+    await ref.update(data);
+    ByteAccumulator.addData(data);
   }
 
-  Future<String?> getLastEntryKeyFromDB(String path) async {
-    final baseRef = firebaseDatabase.ref(path);
-    final query = baseRef.orderByKey().limitToLast(1);
-    final snapshot = await query.get();
+  // Future<void> updateNullableDB({
+  //   required String? path,
+  //   required Map<String, String> data,
+  // }) async {
+  //   if (path == null || path.isEmpty) return;
+  //   await updateDB(path: path, data: data);
+  // }
 
-    if (snapshot.exists && snapshot.children.isNotEmpty) {
-      return snapshot.children.first.key;
-    }
-    return null;
-  }
+  // Future<void> addToDB({
+  //   required String path,
+  //   required Map<String, dynamic> data,
+  // }) async {
+  //   final baseRef = firebaseDatabase.ref(path);
+  //   final newEntryRef = baseRef.push();
+  //   await newEntryRef.set(data);
+  // }
+
+  // Future<String?> getLastEntryKeyFromDB(String path) async {
+  //   final baseRef = firebaseDatabase.ref(path);
+  //   final query = baseRef.orderByKey().limitToLast(1);
+  //   final snapshot = await query.get();
+
+  //   if (snapshot.exists && snapshot.children.isNotEmpty) {
+  //     return snapshot.children.first.key;
+  //   }
+  //   return null;
+  // }
 
   // ===============================
   // HIVE READ
@@ -74,7 +83,7 @@ class DatabaseService {
     dynamic data;
 
     if (path == null || path.isEmpty) {
-      print("The path: $path from box: $b is null or empty!");
+      print("The path: $path from box: ${b.name} is null or empty!");
       return null;
     }
 
@@ -82,6 +91,13 @@ class DatabaseService {
     if (data == null) return null;
 
     return Map<String, dynamic>.from(data);
+  }
+
+  ///Returns the whole box as a Map<String, dynamic>
+  ///[String] --> the node keys of elements
+  ///[dynamic] --> the map that has the value and field names.
+  Map<String, dynamic> readBoxFromHive({required Box b}){
+    return Map<String, dynamic>.from(b.toMap());
   }
 
   // ===============================

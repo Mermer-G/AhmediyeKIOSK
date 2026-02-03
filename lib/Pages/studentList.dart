@@ -217,8 +217,19 @@ class _StudentListerPageState extends State<StudentListerPage> {
           DataCell(Text(student.group)),  
           DataCell(Text(student.number.toString())), 
           DataCell(Text(student.name)),
-          DataCell(Text(student.state))
-        ]));
+          DataCell(Text(student.state))],
+
+          color: WidgetStateProperty.resolveWith((states) {
+            if (student.state == STATEOUT) {
+              return Colors.red.shade100;
+            }
+            if (states.contains(WidgetState.selected)) {
+              return Colors.blue.shade50;
+            }
+            return Colors.grey.shade100;
+          }),
+        
+        ));
       });
       _isLoading = false;
       
@@ -320,7 +331,7 @@ class _StudentListerPageState extends State<StudentListerPage> {
                     scrollDirection: Axis.horizontal,
                     child: SingleChildScrollView(
                       scrollDirection: Axis.vertical,
-                      child: Drawtable(),
+                      child: drawtable(),
                     ),
                   ),
                 ),
@@ -435,15 +446,28 @@ class _StudentListerPageState extends State<StudentListerPage> {
 
                           ElevatedButton(
                             onPressed: () {
-                              
+                              students.forEach((st) {
+                                  _databaseService.updateDB(path: "StudentUpdated/${st.group}_${st.number}", data: Student.toFireBase(st));
+                                }
+                              );
                             },
                             child: const Text("Student verilerini FireBase'e pushla!"),
                           ),
 
                           ElevatedButton(
                             onPressed: () {
-                              Hive.box(studentBox).clear();
-                              _saveAll();
+                              final map = _databaseService.readBoxFromHive(b: Hive.box(entryBox));
+                              map.forEach((k,v) {
+                                  print("Push IDs: $k");
+                                  print("Values: $v");
+                                  String path = "EntryUpdated/";
+                                  path += k;
+                                  final map = Map<String, dynamic>.from(v);
+                                  _databaseService.updateDB(path: path, data: map);
+                                }
+                              );
+                              // final entries = Entry.fromFireBase(map);
+                              // entries.forEach(())
                             },
                             child: const Text("Entry verilerini FireBase'e pushla!"),
                           ),
@@ -462,7 +486,7 @@ class _StudentListerPageState extends State<StudentListerPage> {
     );
   }
 
-  DataTable Drawtable() {
+  DataTable drawtable() {
     convertValuesToListItems();
     return DataTable(
       sortColumnIndex: _sortColumnIndex,
@@ -475,7 +499,7 @@ class _StudentListerPageState extends State<StudentListerPage> {
         if (states.contains(WidgetState.selected)) {
           return Colors.blue.shade50;
         }
-        return Colors.grey.shade50;
+        return Colors.grey.shade100;
       }),
       headingTextStyle: const TextStyle(
         fontWeight: FontWeight.bold,

@@ -1,7 +1,9 @@
 import 'package:app1/Pages/entryList.dart';
-import 'package:app1/utils/filter_text_field.dart';
+import 'package:app1/Pages/studentInfo.dart';
+import 'package:app1/utils/database_models.dart';
+import 'package:app1/utils/database_service.dart';
 import 'package:flutter/material.dart';
-import 'package:app1/utils/test.dart';
+import 'package:hive_flutter/adapters.dart';
 import 'studentList.dart';
 import 'dart:async';
 
@@ -16,7 +18,6 @@ class HomePage extends StatefulWidget {
 
 
 class _HomePageState extends State<HomePage> {
-
   late String _currentTime;
   Timer? _timer;
   int outsideCount = 0; // Firebase'den gelecek
@@ -37,6 +38,11 @@ class _HomePageState extends State<HomePage> {
           "${now.hour.toString().padLeft(2, '0')}:"
           "${now.minute.toString().padLeft(2, '0')}:"
           "${now.second.toString().padLeft(2, '0')}";
+      
+      outsideCount = Hive.box(studentBox)
+        .values
+        .where((s) => Map.from(s)[stateDB] == STATEOUT)
+        .length;
     });
   }
 
@@ -149,7 +155,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(12),
-                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => (FilterExample()))),
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => (entryListerPage()))),
                               child: Center(
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
@@ -207,7 +213,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     child: Text(
                       outsideCount > 0
-                          ? "Dışarıdaki Talebe: $outsideCount"
+                          ? "Dışarıdaki Talebe Sayısı: $outsideCount"
                           : "Dışarıda öğrenci yok",
                       style: const TextStyle(
                         fontSize: 16,

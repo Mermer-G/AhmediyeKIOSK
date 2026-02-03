@@ -1,5 +1,6 @@
 import 'package:app1/Pages/home.dart';
 import 'package:app1/utils/database_service.dart';
+import 'package:app1/utils/synchronizer.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:hive_flutter/adapters.dart';
@@ -16,10 +17,11 @@ void main() async {
   if (!Hive.isBoxOpen(entryBox)) {
     await Hive.openBox(entryBox);
   }
-  
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  Synchronizer().start();
   runApp(const MyApp());
 }
 

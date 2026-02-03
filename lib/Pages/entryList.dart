@@ -135,8 +135,18 @@ class _entryListerPageState extends State<entryListerPage> {
           cells: [
           DataCell(Text(entry.group)),  
           DataCell(Text(entry.number.toString())), 
-          DataCell(Text(entry.exitTime)),
-        ]));
+          DataCell(Text(entry.exitTime)),],
+
+          color: WidgetStateProperty.resolveWith((states) {
+            if (entry.entryTime == null) {
+              return Colors.red.shade100;
+            }
+            if (states.contains(WidgetState.selected)) {
+              return Colors.blue.shade50;
+            }
+            return Colors.grey.shade100;
+          }),
+        ));
       });
       _isLoading = false;
       print("Number of students in the table: $numberOfstudents");
@@ -226,7 +236,7 @@ class _entryListerPageState extends State<entryListerPage> {
                     scrollDirection: Axis.horizontal,
                     child: SingleChildScrollView(
                       scrollDirection: Axis.vertical,
-                      child: Drawtable(),
+                      child: drawtable(),
                     ),
                   ),
                 ),
@@ -312,7 +322,7 @@ class _entryListerPageState extends State<entryListerPage> {
   }
 
 
-  DataTable Drawtable() {
+  DataTable drawtable() {
     convertValuesToListItems();
     return DataTable(
       sortColumnIndex: _sortColumnIndex,
@@ -325,7 +335,7 @@ class _entryListerPageState extends State<entryListerPage> {
         if (states.contains(WidgetState.selected)) {
           return Colors.blue.shade50;
         }
-        return Colors.grey.shade50;
+        return Colors.grey.shade100;
       }),
       headingTextStyle: const TextStyle(
         fontWeight: FontWeight.bold,
