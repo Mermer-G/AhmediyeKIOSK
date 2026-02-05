@@ -12,19 +12,18 @@ class Synchronizer {
 
   final DatabaseService _dbService = DatabaseService();
   Timer? _timer;
-  bool isUpdateReq = true;
+  bool isUpdateReq = false;
 
   void start(){
     print("Timer has started");
     Hive.box(entryBox).watch().listen((event) {
-      isUpdateReq = true;
+      if (!event.deleted) {
+        isUpdateReq = true;
+      }
     });
     _timer = Timer.periodic(const Duration(seconds: 5), (t) => sync());
   }
 
-  
-  
-   
   void stop(){
     if (_timer != null){
       _timer!.cancel();
@@ -37,11 +36,11 @@ class Synchronizer {
     isUpdateReq = false;
     final eB = Hive.box(entryBox);
     final entryMap = Map<String, dynamic>.from(eB.toMap());
-    _dbService.updateDB(path: "EntryTest", data: entryMap);
+    _dbService.updateDB(path: "Entry", data: entryMap);
 
     final sB = Hive.box(studentBox);
     final studentMap = Map<String, dynamic>.from(sB.toMap());
-    _dbService.updateDB(path: "StudentTest", data: studentMap);
+    _dbService.updateDB(path: "Student", data: studentMap);
     print("Synced!");
   }
 }

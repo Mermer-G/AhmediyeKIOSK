@@ -1,4 +1,5 @@
 import 'package:app1/Pages/entryList.dart';
+import 'package:app1/Pages/passwordPage.dart';
 import 'package:app1/Pages/studentInfo.dart';
 import 'package:app1/utils/database_models.dart';
 import 'package:app1/utils/database_service.dart';
@@ -7,6 +8,8 @@ import 'package:hive_flutter/adapters.dart';
 import 'studentList.dart';
 import 'dart:async';
 
+String settingsPassword = "365";
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -14,8 +17,6 @@ class HomePage extends StatefulWidget {
   @override
   State<HomePage> createState() => _HomePageState();
 }
-
-
 
 class _HomePageState extends State<HomePage> {
   late String _currentTime;
@@ -144,7 +145,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                         SizedBox(width: 12),
-                        Material(  // Giriş Çıkış Butonu
+                        Material(  // Ayarlar Butonu
                           color: Colors.transparent,
                           child: Ink(
                             width: 100,
@@ -155,19 +156,19 @@ class _HomePageState extends State<HomePage> {
                             ),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(12),
-                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => (entryListerPage()))),
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => (PasswordPage()))),
                               child: Center(
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: const [
                                     Icon(
-                                      Icons.list_alt_rounded,
+                                      Icons.settings,
                                       color: Colors.white,
                                       size: 30,
                                     ),
                                     SizedBox(height: 4),
                                     Text(
-                                      "Giriş Çıkış",
+                                      "Ayarlar",
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontSize: 11,
@@ -231,7 +232,7 @@ class _HomePageState extends State<HomePage> {
                       Icon(Icons.person_outline),
                       SizedBox(width: 6),
                       Text(
-                        "Nöbetçi Hoca: Ahmet Yılmaz",
+                        "Nöbetçi Hoca: Daha uygulamaya eklenmedi",
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w500,

@@ -1,6 +1,7 @@
 import 'package:app1/Pages/studentInfo.dart';
 import 'package:app1/utils/database_models.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../utils/database_service.dart'; // Correct import path
@@ -90,46 +91,6 @@ class _StudentListerPageState extends State<StudentListerPage> {
     _fetchDataFromHive();
   }
 
-  List<Student> parseToStudents(Object? raw){
-    List<Student> returnList = [];
-
-    if(raw is Map){
-      //Here keys are nodeKeys(IDs) of students and the values are value blocks A1 : {Dorm:..., Name:...}
-      Map<String, dynamic> stringMap = raw.map((key,value) => MapEntry(key.toString(), value));
-      print("A");
-      returnList = parseToDataType(stringMap, Student.fromFireBase);
-    }
-
-    else{
-      //TODO: Throw error
-    }
-
-    return returnList;
-  }
-
-  Future<void> _fetchDataFromFirebase() async {
-    try {
-      print('===== VERİ ÇEKME BAŞLADI =====');
-      final DataSnapshot? snapshot = await _databaseService.readFromDB(path: 'STUDENT');
-      final raw = snapshot?.value;
-      students = parseToStudents(raw);
-      
-      //This is just for testing shown data will be set in somewhere different.
-      // convertValuesToListItems();
-      setState(() {
-        _isLoading = false;
-      });
-    }
-     
-    catch (e) {
-      print('HATA: $e');
-      setState(() {
-        _errorMessage = 'Error fetching data: $e';
-        _isLoading = false;
-      });
-    }
-  }
-
   Future<void> _fetchDataFromHive() async{
     try {
       print('===== VERİ ÇEKME BAŞLADI =====');
@@ -157,7 +118,7 @@ class _StudentListerPageState extends State<StudentListerPage> {
       
     catch (e) {
       setState(() {
-        _errorMessage = 'Error fetching data: $e';
+        _errorMessage = 'Veri yüklenemedi. Veri tabanından resetlemeyi deneyin.';
         _isLoading = false;
       });
     }
@@ -217,7 +178,7 @@ class _StudentListerPageState extends State<StudentListerPage> {
           DataCell(Text(student.group)),  
           DataCell(Text(student.number.toString())), 
           DataCell(Text(student.name)),
-          DataCell(Text(student.state))],
+          DataCell(Text(student.state == STATEIN ? "İçeride" : "Dışarıda"))],
 
           color: WidgetStateProperty.resolveWith((states) {
             if (student.state == STATEOUT) {
@@ -246,7 +207,7 @@ class _StudentListerPageState extends State<StudentListerPage> {
       shownStudents = shownStudents.where((student) => student.group.toString().toLowerCase().contains(groupF.toLowerCase())).toList();
     }
     if (numberF.isNotEmpty){
-      shownStudents = shownStudents.where((student) => student.number.toString().toLowerCase().contains(numberF.toLowerCase())).toList();
+      shownStudents = shownStudents.where((student) => student.number.toString().toLowerCase() == (numberF.toLowerCase())).toList();
     }
     if (stateF.isNotEmpty){
       shownStudents = shownStudents.where((student) => student.state.toString().toLowerCase().contains(stateF.toLowerCase())).toList();
@@ -424,17 +385,17 @@ class _StudentListerPageState extends State<StudentListerPage> {
                           //   child: const Text("Hive'da girişleri resetle"),
                           // ),
 
-                          ElevatedButton(
-                            onPressed: () async{
-                              final DataSnapshot? snapshot = await _databaseService.readFromDB(path: 'Student');
-                              final raw = snapshot?.value;
-                              students.clear;
-                              setState(() {
-                                students = parseToStudents(raw);
-                              });
-                            },
-                            child: const Text("Firebase'den oku ve göster."),
-                          ),
+                          // ElevatedButton(
+                          //   onPressed: () async{
+                          //     final DataSnapshot? snapshot = await _databaseService.readFromDB(path: 'Student');
+                          //     final raw = snapshot?.value;
+                          //     students.clear;
+                          //     setState(() {
+                          //       students = parseToStudents(raw);
+                          //     });
+                          //   },
+                          //   child: const Text("Firebase'den oku ve göster."),
+                          // ),
 
                           ElevatedButton(
                             onPressed: () {

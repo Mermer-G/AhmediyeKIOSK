@@ -1,10 +1,6 @@
-import 'dart:ffi';
-
 import 'package:app1/utils/database_models.dart';
-import 'package:app1/utils/synchronizer.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import 'package:intl/intl.dart';
 import '../utils/database_service.dart';
 import '../utils/cache_revert_button.dart';
 
@@ -25,10 +21,14 @@ class StudentInfoPage extends StatefulWidget {
 const STATEIN = "Inside";
 const STATEOUT = "Outside";
 
+
+
 class _StudentInfoPageState extends State<StudentInfoPage> {
   final _dbService = DatabaseService();
   late Student st;
   Entry? entry;
+
+
 
   //Get state values from hive
 
@@ -52,8 +52,12 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
       } 
 
       final entryMap = _dbService.readFromHive(path: st.entryID!, b: Hive.box(entryBox)); 
+      if(entryMap == null){
+        print("It was null");
+      }
+      print("Entry ID:${st.entryID}");
       entry = Entry.fromFireBase(entryMap!);
-      
+      print("B");
     });
   }
 
@@ -137,73 +141,107 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
   // Entry window
   Future<bool> showEntry(BuildContext context, Student student) async {
     final sebepCtrl = TextEditingController();
-    final hocaCtrl = TextEditingController();
+    String? selectedReason;
+    String? selectedPermission;
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return AlertDialog(
-          title: const Text("Talebe Dışarı Çıkıyor"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                "Çıkış Tarihi:\n${DateTime.now()}",
-                style: const TextStyle(fontSize: 13, color: Colors.grey),
+        return StatefulBuilder(
+          builder: (context, setDialogState) { 
+              return AlertDialog(title: const Text("Talebe Dışarı Çıkıyor"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "Çıkış Tarihi:\n${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year} ${DateTime.now().hour}:${DateTime.now().minute}.${DateTime.now().second}",
+                    style: const TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 12),
+            
+                  DropdownButton<String>(
+                    value: selectedReason,
+                    hint: const Text("Sebep Seçiniz."),
+                    items: ["Hastane", "Hizmet", "Sohbet", "Diğer..."].map((item) {
+                      return DropdownMenuItem<String>(
+                        value: item,
+                        child: Text(item),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setDialogState(() {
+                        selectedReason = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 10),
+            
+            
+                  if(selectedReason == "Diğer...")
+                    TextField(
+                    controller: sebepCtrl,
+                    decoration: const InputDecoration(
+                      labelText: "Lütfen izin sebebinizi açıklayın:",
+                      border: OutlineInputBorder(),
+                      ),
+                    ),
+                  if(selectedReason == "Diğer...")
+                    const SizedBox(height: 10),
+            
+                  DropdownButton<String>(
+                    value: selectedPermission,
+                    hint: const Text("İzin alınan hocayı seçiniz."),
+                    items: ["Ruçhan Emre Aksay", "Hamza BoyacıOğlu", "İsmet Enes Tandoğaç", "Eren Kahrman"].map((item) {
+                      return DropdownMenuItem<String>(
+                        value: item,
+                        child: Text(item),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setDialogState(() {
+                        selectedPermission = value;
+                      });
+                    },
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-
-              TextField(
-                controller: sebepCtrl,
-                decoration: const InputDecoration(
-                  labelText: "Sebep",
-                  border: OutlineInputBorder(),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context, false); // ❌ iptal
+                  },
+                  child: const Text("İptal"),
                 ),
-              ),
-              const SizedBox(height: 10),
-
-              TextField(
-                controller: hocaCtrl,
-                decoration: const InputDecoration(
-                  labelText: "İzin Alınan Hoca",
-                  border: OutlineInputBorder(),
+                ElevatedButton(
+                  onPressed: () async {
+                    //Entry datası oluşturulur.
+                    final entryID = _dbService.createPushID();
+                    Entry entry = Entry(
+                      entryID: entryID,
+                      group: student.group, 
+                      number: student.number, 
+                      exitTime: DateTime.now().toString(), 
+                      entryTime: null, 
+                      permission: selectedPermission, 
+                      reason: selectedReason
+                    );
+                    //Entry Hive'a yazılır.
+                    await _dbService.putToHive(pID: entryID, data: Entry.toFireBase(entry), b: Hive.box(entryBox));
+            
+                    setState(() {
+                      student.entryID = entryID;
+                      student.state = STATEOUT;
+                      widget.student.entryID = entryID;
+                    });
+            
+                    _dbService.updateHive(path: "${student.group}_${student.number}", data: Student.toFireBase(student), b: Hive.box(studentBox));
+                    Navigator.pop(context, true); // ✅ başarılı
+                  },
+                  child: const Text("Çıkışı Kaydet"),
                 ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context, false); // ❌ iptal
-              },
-              child: const Text("İptal"),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                //Entry datası oluşturulur.
-                Entry entry = Entry(
-                  group: student.group, 
-                  number: student.number, 
-                  exitTime: DateTime.now().toString(), 
-                  entryTime: null, 
-                  permission: hocaCtrl.text, 
-                  reason: sebepCtrl.text
-                );
-                //Entry Hive'a yazılır.
-                final enrtyID = await _dbService.putToHive(data: Entry.toFireBase(entry), b: Hive.box(entryBox));
-
-                setState(() {
-                  student.entryID = enrtyID;
-                  student.state = STATEOUT;
-                  widget.student.entryID = enrtyID;
-                });
-
-                _dbService.updateHive(path: "${student.group}_${student.number}", data: Student.toFireBase(student), b: Hive.box(studentBox));
-                Navigator.pop(context, true); // ✅ başarılı
-              },
-              child: const Text("Çıkışı Kaydet"),
-            ),
-          ],
+              ]
+            );
+          }
         );
       },
     );
@@ -323,12 +361,12 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
         st.state = STATEIN;
         entry!.entryTime = DateTime.now().toString();
         widget.student.state = STATEIN;
-      });      
+      });
 
       _dbService.updateHive(path: st.entryID!, data: Entry.toFireBase(entry!), b: Hive.box(entryBox));
       _dbService.updateHive(path: "${st.group}_${st.number}", data: Student.toFireBase(st), b: Hive.box(studentBox));
       setState(() {
-        
+        st.entryID = null;
       });
       
       return;
@@ -339,9 +377,10 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
   }
 
   Future<void> addTestEntry(Student st) async {
-    final Entry entry = Entry(group: st.group, number: st.number, exitTime: DateTime.now().toString(), entryTime: null, permission: "Test", reason: "Test Reason");
+    final Entry entry = Entry(entryID: _dbService.createPushID(), group: st.group, number: st.number, exitTime: DateTime.now().toString(), entryTime: null, permission: "Test", reason: "Test Reason");
     final data = Entry.toFireBase(entry); 
-    final lastEntryKey = await _dbService.putToHive(path: null, data: data, b: Hive.box(entryBox));
+    final lastEntryKey = entry.entryID;
+    await _dbService.putToHive(pID: lastEntryKey, path: null, data: data, b: Hive.box(entryBox));
     setState(() {
       st.entryID = lastEntryKey;
       st.state = STATEOUT;

@@ -120,20 +120,23 @@ class DatabaseService {
     // });
   }
 
-  Future<String> putToHive({
+  Future<void> putToHive({
     required Map<String, dynamic> data,
     required Box b,
+    required String pID,
     String? path
   }) async {
-    final pushId = DateTime.now().millisecondsSinceEpoch.toString();
+    final pushId = pID;
     
     final fullPath = (path == null || path.isEmpty) ? pushId : '$path/$pushId';
 
     // _cacheHelper.schedule(() async {
       await b.put(fullPath, data);
     // });
+  }
 
-    return pushId;
+  String createPushID(){
+    return DateTime.now().millisecondsSinceEpoch.toString();
   }
 
   Future<String?> getLastEntryKeyFromHive(String path, Box b) async {

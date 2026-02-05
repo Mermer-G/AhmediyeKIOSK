@@ -75,25 +75,26 @@ class Student {
     return [
       DataColumn(
         onSort: onSort,
-        label: Text(groupDB)
+        label: Text("Grup")
       ),
       DataColumn(
         onSort: onSort,
-        label: Text(numberDB)
+        label: Text("Numara")
       ),
       DataColumn(
         onSort: onSort,
-        label: Text(nameDB)
+        label: Text("Ad Soyad")
       ),
       DataColumn(
         onSort: onSort,
-        label: Text(stateDB)
+        label: Text("Durumu")
       )
     ];
   }
 }
 
 class Entry {
+  String entryID;
   String exitTime;
   String group;
   int number;
@@ -102,6 +103,7 @@ class Entry {
   String? reason;
 
   Entry ({
+    required this.entryID,
     required this.group,
     required this.number,
     required this.exitTime,
@@ -112,6 +114,7 @@ class Entry {
 
   factory Entry.fromFireBase(Map<String, dynamic> entryValues){
     return Entry(
+      entryID: entryValues[entryIDDB],
       number: int.tryParse(entryValues[numberDB]?.toString() ?? '') ?? 0, 
       group: entryValues[groupDB], 
       exitTime: entryValues[exitTimeDB], 
@@ -123,6 +126,7 @@ class Entry {
 
   static Map<String, dynamic> toFireBase(Entry et){
     return {
+      entryIDDB: et.entryID,
       exitTimeDB: et.exitTime,
       numberDB: et.number,
       groupDB: et.group,
@@ -136,15 +140,15 @@ class Entry {
     return [
       DataColumn(
         onSort: onSort,
-        label: Text(groupDB)
+        label: Text("Grup")
       ),
       DataColumn(
         onSort: onSort,
-        label: Text(numberDB)
+        label: Text("Numara")
       ),
       DataColumn(
         onSort: onSort,
-        label: Text(exitTimeDB)
+        label: Text("Çıkış Vakti")
       )
     ];
   }

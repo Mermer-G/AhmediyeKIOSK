@@ -48,13 +48,14 @@ class _entryListerPageState extends State<entryListerPage> {
       print("Keys[${rawMap.keys.first.runtimeType}]: ${rawMap.keys.first}, Values[${rawMap.values.first.runtimeType}]: ${rawMap.values.first}");
       
       rawMap.forEach((k,v){
+        print("Entry nodeKey in hive: $k");
         Map<String, dynamic> valuesMap = Map<String, dynamic>.from(v as Map);
         entries.add(
           Entry.fromFireBase(valuesMap)
         );
       });
 
-      print("Student count: ${entries.length} ");
+      print("Entry count: ${entries.length} ");
       
       //This is just for testing shown data will be set in somewhere different.
       // convertValuesToListItems();
@@ -65,7 +66,7 @@ class _entryListerPageState extends State<entryListerPage> {
       
     catch (e) {
       setState(() {
-        _errorMessage = 'Error fetching data: $e';
+        _errorMessage = 'Veri yüklenemedi. Veri tabanından resetlemeyi deneyin.';
         _isLoading = false;
       });
     }
@@ -74,7 +75,7 @@ class _entryListerPageState extends State<entryListerPage> {
   Future<void> _fetchDataFromFirebase() async {
     try {
       print('===== VERİ ÇEKME BAŞLADI =====');
-      final DataSnapshot? snapshot = await _databaseService.readFromDB(path: 'Entry');
+      final DataSnapshot? snapshot = await _databaseService.readFromDB(path: 'EntryTest');
       final raw = snapshot?.value;
       entries = parseToEntries(raw);
       print("Student count: ${entries.length} ");
@@ -89,7 +90,7 @@ class _entryListerPageState extends State<entryListerPage> {
     catch (e) {
       print('HATA: $e');
       setState(() {
-        _errorMessage = 'Error fetching data: $e';
+        _errorMessage = 'Veri yüklenemedi. Veri tabanından resetlemeyi deneyin.';
         _isLoading = false;
       });
     }
