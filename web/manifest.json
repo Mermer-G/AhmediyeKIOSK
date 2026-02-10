@@ -1,12 +1,12 @@
 {
-    "name": "app1",
-    "short_name": "app1",
+    "name": "Ahmediye KIOSK",
+    "short_name": "KIOSK",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#5A5A5A",
+    "theme_color": "#5A5A5A",
+    "description": "Ahmediye Yurdu ogrenci giris-cikis yonetim sistemi.",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {

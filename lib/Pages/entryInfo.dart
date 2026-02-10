@@ -1,10 +1,10 @@
-import 'package:app1/utils/database_models.dart';
-import 'package:app1/utils/database_service.dart';
+import 'package:ahmediye_kiosk/utils/database_models.dart';
+import 'package:ahmediye_kiosk/utils/database_service.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
 class EntryInfoPage extends StatefulWidget {
-  final Entry entry; //for showing data
+  final Entry entry;
 
   const EntryInfoPage({
     super.key,
@@ -19,15 +19,12 @@ class _EntryInfoPageState extends State<EntryInfoPage> {
   late Student st;
   late Entry ent;
 
-  void initializeFields(){
-    DatabaseService _dbService = DatabaseService();
+  void initializeFields() {
+    DatabaseService dbService = DatabaseService();
     ent = widget.entry;
     setState(() {
-      //If possible get the lastPushID (this will come from lister page)
-      //If not skip below 
-      final raw = _dbService.readFromHive(path: "${ent.group}_${ent.number}", b: Hive.box(studentBox)); 
-      if (raw == null){
-      print("AA");
+      final raw = dbService.readFromHive(path: "${ent.group}_${ent.number}", b: Hive.box(studentBox));
+      if (raw == null) {
         throw Exception("There is no student for this entry data!");
       }
       st = Student.fromFireBase(raw);
@@ -42,34 +39,30 @@ class _EntryInfoPageState extends State<EntryInfoPage> {
 
   @override
   Widget build(BuildContext context) {
-    //Öğrenciyi çekecek,
-    //Ad soyad, grup, numara, Çıkış tarihi, Giriş tarihi, sebep ve izin gösterecek
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Giriş-Çıkış Bilgileri"),
+        title: const Text("Giris-Cikis Bilgileri"),
       ),
-      body: Stack(
-        children: [
-          ListView(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 700),
+          child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              /// 🟨 BAĞLAM
-              _infoCard("Adı Soyadı:", st.name),
+              _infoCard("Adi Soyadi:", st.name),
               _infoCard("Grubu:", ent.group.toString()),
-              _infoCard("Numarası:", ent.number.toString()),
-              _infoCard("Çıkış Sebebi:", ent.reason),
-              _infoCard("İzin Alınan Hoca:", ent.permission),
-              _infoCard("Çıkış Zamanı:", ent.exitTime.split('.')[0]),
-              _infoCard("Giriş Zamanı:", (ent.entryTime == null || ent.entryTime == "") ? "Daha yurda giriş yapmadı." : ent.entryTime!.split('.')[0])
+              _infoCard("Numarasi:", ent.number.toString()),
+              _infoCard("Cikis Sebebi:", ent.reason),
+              _infoCard("Izin Alinan Hoca:", ent.permission),
+              _infoCard("Cikis Zamani:", ent.exitTime.split('.')[0]),
+              _infoCard("Giris Zamani:", (ent.entryTime == null || ent.entryTime == "") ? "Daha yurda giris yapmadi." : ent.entryTime!.split('.')[0]),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  // ────────────────────────────────
-  // BİLGİ SATIRI
   Widget _infoCard(String title, String? value) {
     return Card(
       margin: const EdgeInsets.only(bottom: 10),

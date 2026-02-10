@@ -1,7 +1,7 @@
 import 'dart:async';
 
 
-import 'package:app1/utils/database_service.dart';
+import 'package:ahmediye_kiosk/utils/database_service.dart';
 import 'package:hive/hive.dart';
 
 

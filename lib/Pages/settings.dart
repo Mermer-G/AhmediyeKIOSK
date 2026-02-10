@@ -1,5 +1,5 @@
-import 'package:app1/utils/database_models.dart';
-import 'package:app1/utils/database_service.dart';
+import 'package:ahmediye_kiosk/utils/database_models.dart';
+import 'package:ahmediye_kiosk/utils/database_service.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
@@ -18,45 +18,39 @@ class SettingsPageState extends State<SettingsPage> {
       builder: (_) => AlertDialog(
         title: const Text("Emin misin?"),
         content: const Text(
-          "Database'deki TÜM veriler silinecek.\nBu işlem geri alınamaz.",
+          "Database'deki TUM veriler silinecek.\nBu islem geri alinamaz.",
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("İptal"),
+            child: const Text("Iptal"),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
-            onPressed: () async{
-              DatabaseService _databaseService = DatabaseService();
-              List<Student> students = await _fetchStudentDataFromFirebase(_databaseService);
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              DatabaseService databaseService = DatabaseService();
+              List<Student> students = await _fetchStudentDataFromFirebase(databaseService);
               Hive.box(studentBox).clear();
-              for (final student in students){
+              for (final student in students) {
                 final value = Student.toFireBase(student);
                 final path = "${student.group}_${student.number}";
-                _databaseService.updateHive(path: path, data: value, b: Hive.box(studentBox));
+                databaseService.updateHive(path: path, data: value, b: Hive.box(studentBox));
               }
 
-
-              List<Entry> entries = await _fetchEntryDataFromFirebase(_databaseService);
+              List<Entry> entries = await _fetchEntryDataFromFirebase(databaseService);
               Hive.box(entryBox).clear();
-              for (final entry in entries){
+              for (final entry in entries) {
                 final value = Entry.toFireBase(entry);
                 final path = entry.entryID;
-                _databaseService.updateHive(path: path, data: value, b: Hive.box(entryBox));
+                databaseService.updateHive(path: path, data: value, b: Hive.box(entryBox));
               }
-              
+
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Veriler veri tabanıyla eşitlendi."),
-                ),
+                const SnackBar(content: Text("Veriler veri tabaniyla esitlendi.")),
               );
-              
             },
-            child: const Text("Sıfırla"),
+            child: const Text("Sifirla"),
           ),
         ],
       ),
@@ -67,11 +61,11 @@ class SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: appBarM(),
-      body: Padding( 
-        padding: EdgeInsets.all(20),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
         child: Center(
-          child: SizedBox(
-            width: 500,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
             child: Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -92,14 +86,14 @@ class SettingsPageState extends State<SettingsPage> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      "Uygulamada tutulan tüm yerel verileri siler.",
+                      "Uygulamada tutulan tum yerel verileri siler.",
                       style: TextStyle(color: Colors.grey),
                     ),
                     const SizedBox(height: 24),
                     ElevatedButton.icon(
                       onPressed: () => _confirmReset(context),
                       icon: const Icon(Icons.delete_forever),
-                      label: const Text("Mevcut verileri sıfırla ve veri tabanından yeni veri al."),
+                      label: const Text("Mevcut verileri sifirla ve veri tabanindan yeni veri al."),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,
                         foregroundColor: Colors.white,
@@ -114,8 +108,8 @@ class SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ),
-        )
-      )
+        ),
+      ),
     );
   }
 
@@ -123,75 +117,49 @@ class SettingsPageState extends State<SettingsPage> {
     return AppBar(
       centerTitle: true,
       elevation: 10.0,
-      title: Text(
+      title: const Text(
         'Ahmediye K.I.O.S.K',
-        style: TextStyle(
-          color: Colors.white
-        ),
-        ),
+        style: TextStyle(color: Colors.white),
+      ),
       backgroundColor: const Color.fromARGB(255, 90, 90, 90),
     );
   }
 
-  Future<List<Student>> _fetchStudentDataFromFirebase(DatabaseService _dbService) async {
+  Future<List<Student>> _fetchStudentDataFromFirebase(DatabaseService dbService) async {
     try {
-      print('===== VERİ ÇEKME BAŞLADI =====');
-      final DataSnapshot? snapshot = await _dbService.readFromDB(path: 'Student');
+      final DataSnapshot? snapshot = await dbService.readFromDB(path: 'Student');
       final raw = snapshot?.value;
       return parseToStudents(raw);
-    }
-     
-    catch (e) {
+    } catch (e) {
       throw Exception('Error fetching data: $e');
     }
   }
 
-  Future<List<Entry>> _fetchEntryDataFromFirebase(DatabaseService _dbService) async {
+  Future<List<Entry>> _fetchEntryDataFromFirebase(DatabaseService dbService) async {
     try {
-      print('===== VERİ ÇEKME BAŞLADI =====');
-      final DataSnapshot? snapshot = await _dbService.readFromDB(path: 'Entry');
+      final DataSnapshot? snapshot = await dbService.readFromDB(path: 'Entry');
       final raw = snapshot?.value;
       return parseToEntries(raw);
-    }
-     
-    catch (e) {
+    } catch (e) {
       throw Exception('Error fetching data: $e');
     }
   }
 
-  List<Student> parseToStudents(Object? raw){
+  List<Student> parseToStudents(Object? raw) {
     List<Student> returnList = [];
-
-    if(raw is Map){
-      //Here keys are nodeKeys(IDs) of students and the values are value blocks A1 : {Dorm:..., Name:...}
-      Map<String, dynamic> stringMap = raw.map((key,value) => MapEntry(key.toString(), value));
-      print("A");
+    if (raw is Map) {
+      Map<String, dynamic> stringMap = raw.map((key, value) => MapEntry(key.toString(), value));
       returnList = parseToDataType(stringMap, Student.fromFireBase);
     }
-
-    else{
-      //TODO: Throw error
-    }
-
     return returnList;
   }
 
-  List<Entry> parseToEntries(Object? raw){
+  List<Entry> parseToEntries(Object? raw) {
     List<Entry> returnList = [];
-
-    if(raw is Map){
-      //Here keys are nodeKeys(IDs) of students and the values are value blocks A1 : {Dorm:..., Name:...}
-      Map<String, dynamic> stringMap = raw.map((key,value) => MapEntry(key.toString(), value));
-      print("A");
+    if (raw is Map) {
+      Map<String, dynamic> stringMap = raw.map((key, value) => MapEntry(key.toString(), value));
       returnList = parseToDataType(stringMap, Entry.fromFireBase);
     }
-
-    else{
-      //TODO: Throw error
-    }
-
     return returnList;
   }
-
-  
 }

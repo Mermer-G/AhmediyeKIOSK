@@ -1,7 +1,9 @@
-import 'package:app1/Pages/studentInfo.dart';
 import 'package:flutter/material.dart';
 
-// 🔑 DB field constants
+const STATEIN = "Inside";
+const STATEOUT = "Outside";
+
+// DB field constants
 const String nameDB   = "Name";
 const String numberDB = "Number";
 const String groupDB  = "Group";
@@ -163,11 +165,8 @@ List<T> parseToDataType<T>(//This method is only used for parsing values of a wh
   final List<T> result = [];
 
   rawReadValue.forEach((key, value) {
-    print("Types while parsing: Key:($key)${key.runtimeType}, Value:($value)${value.runtimeType}");
     result.add(
-      creator(                            
-        Map<String, dynamic>.from(value) // 👉 {Name: Ali}
-      ),
+      creator(Map<String, dynamic>.from(value)),
     );
   });
 

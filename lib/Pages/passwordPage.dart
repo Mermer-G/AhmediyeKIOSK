@@ -1,5 +1,5 @@
-import 'package:app1/Pages/home.dart';
-import 'package:app1/Pages/settings.dart';
+import 'package:ahmediye_kiosk/Pages/home.dart';
+import 'package:ahmediye_kiosk/Pages/settings.dart';
 import 'package:flutter/material.dart';
 
 class PasswordPage extends StatefulWidget {
@@ -22,7 +22,7 @@ class _PasswordPageState extends State<PasswordPage> {
       );
     } else {
       setState(() {
-        error = "Şifre yanlış";
+        error = "Sifre yanlis";
       });
     }
   }
@@ -30,25 +30,31 @@ class _PasswordPageState extends State<PasswordPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Şifre Gir")),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              controller: _controller,
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: "Şifre",
-                errorText: error,
-              ),
+      appBar: AppBar(title: const Text("Sifre Gir")),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _controller,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: "Sifre",
+                    errorText: error,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: checkPassword,
+                  child: const Text("Giris"),
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: checkPassword,
-              child: const Text("Giriş"),
-            ),
-          ],
+          ),
         ),
       ),
     );
