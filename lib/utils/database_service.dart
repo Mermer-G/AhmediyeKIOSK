@@ -5,8 +5,10 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'cache_helper.dart';
 
-String studentBox = "StudentBox";
-String entryBox = "EntryBox";
+const String studentBox = "StudentBox";
+const String entryBox = "EntryBox";
+const String studentStateBox = "StudentStateBox";
+const String metaBox = "StudentStateBox";
 
 int byteSizeOf(Map<String, dynamic> data) {
   final jsonString = jsonEncode(data);
@@ -16,9 +18,6 @@ int byteSizeOf(Map<String, dynamic> data) {
 class DatabaseService {
   final FirebaseDatabase firebaseDatabase = FirebaseDatabase.instance;
   final CacheHelper _cacheHelper = CacheHelper.instance;
-
-  Timer? _syncTimer;
-  bool _autoSyncEnabled = true;
 
   // ===============================
   // FIREBASE READ
@@ -47,34 +46,6 @@ class DatabaseService {
     await ref.update(data);
     ByteAccumulator.addData(data);
   }
-
-  // Future<void> updateNullableDB({
-  //   required String? path,
-  //   required Map<String, String> data,
-  // }) async {
-  //   if (path == null || path.isEmpty) return;
-  //   await updateDB(path: path, data: data);
-  // }
-
-  // Future<void> addToDB({
-  //   required String path,
-  //   required Map<String, dynamic> data,
-  // }) async {
-  //   final baseRef = firebaseDatabase.ref(path);
-  //   final newEntryRef = baseRef.push();
-  //   await newEntryRef.set(data);
-  // }
-
-  // Future<String?> getLastEntryKeyFromDB(String path) async {
-  //   final baseRef = firebaseDatabase.ref(path);
-  //   final query = baseRef.orderByKey().limitToLast(1);
-  //   final snapshot = await query.get();
-
-  //   if (snapshot.exists && snapshot.children.isNotEmpty) {
-  //     return snapshot.children.first.key;
-  //   }
-  //   return null;
-  // }
 
   // ===============================
   // HIVE READ
@@ -120,13 +91,14 @@ class DatabaseService {
     // });
   }
 
+  ///This method is for only PUSHING! Use updateHive for creating and updating values in hive! 
   Future<void> putToHive({
     required Map<String, dynamic> data,
     required Box b,
-    required String pID,
+    required String pushID,
     String? path
   }) async {
-    final pushId = pID;
+    final pushId = pushID;
     
     final fullPath = (path == null || path.isEmpty) ? pushId : '$path/$pushId';
 
@@ -135,8 +107,8 @@ class DatabaseService {
     // });
   }
 
-  String createPushID(){
-    return DateTime.now().millisecondsSinceEpoch.toString();
+  int createPushID(){
+    return DateTime.now().millisecondsSinceEpoch;
   }
 
   Future<String?> getLastEntryKeyFromHive(String path, Box b) async {
@@ -242,4 +214,9 @@ class DatabaseService {
     ),
   );
 }
+}
+
+String formatTimeString(String? t) {
+  if (t == null) return "—";
+  return t.split('.').first;
 }

@@ -2,7 +2,6 @@ import 'package:app1/Pages/entryInfo.dart';
 import 'package:app1/Pages/studentList.dart';
 import 'package:app1/utils/database_models.dart';
 import 'package:app1/utils/database_service.dart';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
@@ -51,7 +50,7 @@ class _entryListerPageState extends State<entryListerPage> {
         print("Entry nodeKey in hive: $k");
         Map<String, dynamic> valuesMap = Map<String, dynamic>.from(v as Map);
         entries.add(
-          Entry.fromFireBase(valuesMap)
+          Entry.fromMap(valuesMap)
         );
       });
 
@@ -72,29 +71,29 @@ class _entryListerPageState extends State<entryListerPage> {
     }
   }
 
-  Future<void> _fetchDataFromFirebase() async {
-    try {
-      print('===== VERİ ÇEKME BAŞLADI =====');
-      final DataSnapshot? snapshot = await _databaseService.readFromDB(path: 'EntryTest');
-      final raw = snapshot?.value;
-      entries = parseToEntries(raw);
-      print("Student count: ${entries.length} ");
+  // Future<void> _fetchDataFromFirebase() async {
+  //   try {
+  //     print('===== VERİ ÇEKME BAŞLADI =====');
+  //     final DataSnapshot? snapshot = await _databaseService.readFromDB(path: 'EntryTest');
+  //     final raw = snapshot?.value;
+  //     entries = parseToEntries(raw);
+  //     print("Student count: ${entries.length} ");
       
-      //This is just for testing shown data will be set in somewhere different.
-      // convertValuesToListItems();
-      setState(() {
-        _isLoading = false;
-      });
-    }
+  //     //This is just for testing shown data will be set in somewhere different.
+  //     // convertValuesToListItems();
+  //     setState(() {
+  //       _isLoading = false;
+  //     });
+  //   }
      
-    catch (e) {
-      print('HATA: $e');
-      setState(() {
-        _errorMessage = 'Veri yüklenemedi. Veri tabanından resetlemeyi deneyin.';
-        _isLoading = false;
-      });
-    }
-  }
+  //   catch (e) {
+  //     print('HATA: $e');
+  //     setState(() {
+  //       _errorMessage = 'Veri yüklenemedi. Veri tabanından resetlemeyi deneyin.';
+  //       _isLoading = false;
+  //     });
+  //   }
+  // }
 
   List<Entry> parseToEntries(Object? raw){
     List<Entry> returnList = [];
@@ -103,7 +102,7 @@ class _entryListerPageState extends State<entryListerPage> {
       //Here keys are nodeKeys(IDs) of students and the values are value blocks A1 : {Dorm:..., Name:...}
       Map<String, dynamic> stringMap = raw.map((key,value) => MapEntry(key.toString(), value));
       print("A");
-      returnList = parseToDataType(stringMap, Entry.fromFireBase);
+      returnList = parseToDataType(stringMap, Entry.fromMap);
     }
 
     else{
@@ -115,43 +114,43 @@ class _entryListerPageState extends State<entryListerPage> {
 
   void convertValuesToListItems() {
     applyFilterAndSort(numberFilter, groupFilter, exitTimeFilter);
-    setState(() {
-      // We need columns and rows
-      //Columns:
-      _columns = Entry.columns(setSortingFields);
-    
-      //Rows:
-      _rows.clear();
-      //For rows we need to create dataCells
-      int numberOfstudents = 0;
-      shownEntries.forEach((entry) {
-        numberOfstudents++;
-        _rows.add(DataRow(
-          onSelectChanged: (selected) async {
-            if (selected == true) {
-              await Navigator.push(context, MaterialPageRoute(builder: (context) => EntryInfoPage(entry: entry))); // yeni info page gelecek buraya.
-              setState(() {});       
-            }
-          },
-          cells: [
-          DataCell(Text(entry.group)),  
-          DataCell(Text(entry.number.toString())), 
-          DataCell(Text(entry.exitTime)),],
+  
+    // We need columns and rows
+    //Columns:
+    _columns = Entry.columns(setSortingFields);
+  
+    //Rows:
+    _rows.clear();
+    //For rows we need to create dataCells
+    int numberOfstudents = 0;
+    shownEntries.forEach((entry) {
+      numberOfstudents++;
+      _rows.add(DataRow(
+        onSelectChanged: (selected) async {
+          if (selected == true) {
+            await Navigator.push(context, MaterialPageRoute(builder: (context) => EntryInfoPage(entry: entry))); // yeni info page gelecek buraya.
+            setState(() {});       
+          }
+        },
+        cells: [
+        DataCell(Text(entry.group)),  
+        DataCell(Text(entry.number.toString())), 
+        DataCell(Text(entry.exitTime.split('.')[0])),],
 
-          color: WidgetStateProperty.resolveWith((states) {
-            if (entry.entryTime == null) {
-              return Colors.red.shade100;
-            }
-            if (states.contains(WidgetState.selected)) {
-              return Colors.blue.shade50;
-            }
-            return Colors.grey.shade100;
-          }),
-        ));
-      });
-      _isLoading = false;
-      print("Number of students in the table: $numberOfstudents");
+        color: WidgetStateProperty.resolveWith((states) {
+          if (entry.entryTime == null) {
+            return Colors.red.shade100;
+          }
+          if (states.contains(WidgetState.selected)) {
+            return Colors.blue.shade50;
+          }
+          return Colors.grey.shade100;
+        }),
+      ));
     });
+    _isLoading = false;
+    print("Number of students in the table: $numberOfstudents");
+  
   }
 
   void applyFilterAndSort(String numberF, String groupF, String exitTimeF) {
@@ -206,123 +205,6 @@ class _entryListerPageState extends State<entryListerPage> {
     print("Tapped! index: ${sortingColumnIndex}, ascending: ${sortAscending} ");
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Center(child: CircularProgressIndicator());
-    }
-
-    if (_errorMessage != null) {
-      return Center(child: Text(_errorMessage!));
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Data Table'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 50), // 🔥 alt padding 32 px
-        child: Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                flex: 4,
-                child: Align(
-                  alignment: Alignment.topLeft,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.vertical,
-                      child: drawtable(),
-                    ),
-                  ),
-                ),
-              ),
-
-              Expanded(
-                flex: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Container(
-                      width: double.infinity,
-                      height: double.infinity, // 🔥 BU ÖNEMLİ
-                      decoration: BoxDecoration(
-                        color: const Color.fromARGB(255, 28, 132, 184),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          FilterTextField(
-                            title: "Numaraya Göre",
-                            controller: numberController,
-                            onChanged: (value) {
-                              setState(() {
-                                numberFilter = value;
-                              });
-                            }
-                          ),
-
-                          FilterTextField(
-                            title: "Gruba Göre",
-                            controller: groupController,
-                            onChanged: (value) {
-                              setState(() {
-                                groupFilter = value;
-                              });
-                            }
-                          ),
-
-                          FilterTextField(
-                            title: "Çıkış Tarihine Göre",
-                            controller: exitTimeController,
-                            onChanged: (value) {
-                              setState(() {
-                                exitTimeFilter = value;
-                              });
-                            }
-                          ),
-
-                          ElevatedButton(
-                            onPressed: () {
-                              groupController.clear();
-                              numberController.clear();
-                              exitTimeController.clear();
-                              setState(() {
-                                groupFilter = "";
-                                numberFilter = "";
-                                exitTimeFilter = "";
-                              });
-
-                            },
-                            child: const Text("Filtreleri temizle."),
-                          ),
-
-                        ],
-                      )
-                    ),
-                  ),
-                ),
-              )
-            ],
-          ),
-        ),
-      )
-
-
-    );
-  }
-
-
   DataTable drawtable() {
     convertValuesToListItems();
     return DataTable(
@@ -354,4 +236,139 @@ class _entryListerPageState extends State<entryListerPage> {
       rows: _rows,
     );
   }
+
+  Widget _buildFilterPanel() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        FilterTextField(
+          title: "Numaraya Gore",
+          controller: numberController,
+          onChanged: (value) => setState(() => numberFilter = value),
+        ),
+        FilterTextField(
+          title: "Gruba Gore",
+          controller: groupController,
+          onChanged: (value) => setState(() => groupFilter = value),
+        ),
+        FilterTextField(
+          title: "Cikis Tarihine Gore",
+          controller: exitTimeController,
+          onChanged: (value) => setState(() => exitTimeFilter = value),
+        ),
+        const SizedBox(height: 8),
+        ElevatedButton(
+          onPressed: () {
+            groupController.clear();
+            numberController.clear();
+            exitTimeController.clear();
+            setState(() {
+              groupFilter = "";
+              numberFilter = "";
+              exitTimeFilter = "";
+            });
+          },
+          child: const Text("Filtreleri temizle"),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterSidebar() {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            color: const Color.fromARGB(255, 228, 228, 228),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(8),
+            child: _buildFilterPanel(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
+
+    if (_errorMessage != null) {
+      return Center(child: Text(_errorMessage!));
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        
+        final bool isWide = constraints.maxWidth > 700;
+
+        return Scaffold(
+          appBar: AppBar(title: const Text('Giris-Cikis Listesi')),
+          body: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 50),
+            child: Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: !isWide
+              ? Column(
+                  children: [
+                    ExpansionTile(
+                      title: const Text("Filtreler"),
+                      leading: const Icon(Icons.filter_list),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: _buildFilterPanel(),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.vertical,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: drawtable(),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Align(
+                        alignment: Alignment.topCenter,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.vertical,
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: drawtable(),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(flex: 2, child: _buildFilterSidebar()),
+                  ],
+                ),
+              ),
+            ),
+      );
+      }
+    );
+
+
+  }
+
 }
+

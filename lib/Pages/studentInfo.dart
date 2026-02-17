@@ -1,6 +1,8 @@
+import 'package:app1/Pages/settings.dart';
 import 'package:app1/utils/database_models.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:intl/intl.dart';
 import '../utils/database_service.dart';
 import '../utils/cache_revert_button.dart';
 
@@ -50,14 +52,14 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
         print("Student has no entry ID");
         return;
       } 
-
-      final entryMap = _dbService.readFromHive(path: st.entryID!, b: Hive.box(entryBox)); 
+      print("${st.state}");
+      final entryMap = _dbService.readFromHive(path: st.entryID!.toString(), b: Hive.box(entryBox)); 
       if(entryMap == null){
         print("It was null");
+        return;
       }
       print("Entry ID:${st.entryID}");
-      entry = Entry.fromFireBase(entryMap!);
-      print("B");
+      entry = Entry.fromMap(entryMap);
     });
   }
 
@@ -129,7 +131,13 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
             Text("Numara: ${st.number}"),
             const SizedBox(height: 8),
             Chip(
-              label: Text(st.state),
+              label: Text(
+                st.state == null
+                    ? "Belirsiz"
+                    : st.state == "inside"
+                        ? "İçeride"
+                        : "Dışarıda"
+              ),
             ),
           ],
         ),
@@ -140,7 +148,39 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
   //────────────────────────────────
   // Entry window
   Future<bool> showEntry(BuildContext context, Student student) async {
-    final sebepCtrl = TextEditingController();
+    final List<String> reasons = [
+      "Hastane",
+      "Hizmet",
+      "Sohbet",
+      "Market",
+      "Terzi",
+      "Gecelik İzin",
+      "Şehir Dışı",
+      "Diğer...",
+    ];
+
+    // Eğer bugün pazar ise ekle
+    if (DateTime.now().weekday == DateTime.sunday) {
+      reasons.insert(0, "Pazar İzni"); 
+    }
+
+    final List<String> permisions = [
+      "Ruçhan Emre Aksay",
+      "Eren Kahraman",
+      "Ahmet Hamza Boyacıoğlu",
+      "İsmet Enes Tandoğaç",
+      "Salih Çakır",
+      "Ahmet Faruk Elemen",
+      "Meiirbek Bakhtyiar",
+      "Doğukan Işık",
+    ];
+
+    // Eğer bugün pazar ise ekle
+    if (DateTime.now().weekday == DateTime.sunday) {
+      permisions.insert(0, "Pazar İzni"); 
+    }
+
+    final otherReason = TextEditingController();
     String? selectedReason;
     String? selectedPermission;
     final result = await showDialog<bool>(
@@ -148,101 +188,172 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
       barrierDismissible: false,
       builder: (context) {
         return StatefulBuilder(
-          builder: (context, setDialogState) { 
-              return AlertDialog(title: const Text("Talebe Dışarı Çıkıyor"),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    "Çıkış Tarihi:\n${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year} ${DateTime.now().hour}:${DateTime.now().minute}.${DateTime.now().second}",
-                    style: const TextStyle(fontSize: 13, color: Colors.grey),
+          builder: (context, setDialogState) {
+            return Align(
+              alignment: Alignment.topCenter,
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  margin: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  const SizedBox(height: 12),
-            
-                  DropdownButton<String>(
-                    value: selectedReason,
-                    hint: const Text("Sebep Seçiniz."),
-                    items: ["Hastane", "Hizmet", "Sohbet", "Diğer..."].map((item) {
-                      return DropdownMenuItem<String>(
-                        value: item,
-                        child: Text(item),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setDialogState(() {
-                        selectedReason = value;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 10),
-            
-            
-                  if(selectedReason == "Diğer...")
-                    TextField(
-                    controller: sebepCtrl,
-                    decoration: const InputDecoration(
-                      labelText: "Lütfen izin sebebinizi açıklayın:",
-                      border: OutlineInputBorder(),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        "Talebe Dışarı Çıkıyor",
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
-                    ),
-                  if(selectedReason == "Diğer...")
-                    const SizedBox(height: 10),
-            
-                  DropdownButton<String>(
-                    value: selectedPermission,
-                    hint: const Text("İzin alınan hocayı seçiniz."),
-                    items: ["Ruçhan Emre Aksay", "Hamza BoyacıOğlu", "İsmet Enes Tandoğaç", "Eren Kahrman"].map((item) {
-                      return DropdownMenuItem<String>(
-                        value: item,
-                        child: Text(item),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setDialogState(() {
-                        selectedPermission = value;
-                      });
-                    },
+
+                      const SizedBox(height: 10),
+
+                      Text(
+                        "Çıkış Tarihi:\n${formatDate(DateTime.now())}",
+                        style: const TextStyle(fontSize: 13, color: Colors.grey),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      DropdownButton<String>(
+                        value: selectedReason,
+                        hint: const Text("Sebep seçiniz."),
+                        isExpanded: true,
+                        items: reasons.map((item) {
+                            return DropdownMenuItem<String>(
+                              value: item,
+                              child: Text(item),
+                            );
+                          }).toList(),
+                        onChanged: (value) {
+                          setDialogState(() {
+                            selectedReason = value;
+                          });
+                        },
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      DropdownButton<String>(
+                        value: selectedPermission,
+                        hint: const Text("İzin veren hocayı seçiniz."),
+                        isExpanded: true,
+                        items: permisions
+                            .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                            .toList(),
+                        onChanged: (value) {
+                          setDialogState(() {
+                            selectedPermission = value;
+                          });
+                        },
+                      ),
+
+                      if (selectedReason == "Diğer...")
+                        TextField(
+                          controller: otherReason,
+                          decoration: const InputDecoration(
+                            hintText: "Diğer sebebi giriniz...",
+                          ),
+                        ),
+
+                      const SizedBox(height: 10),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text("İptal"),
+                          ),
+                          ElevatedButton(
+                            onPressed: () async{
+                              if (selectedPermission == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Lütfen izin veren hocayı seçiniz."),
+                                  ),
+                                );
+                                return; // ❗ işlemi iptal eder
+                              }
+
+                              if (selectedReason == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Lütfen sebep seçiniz."),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              if (selectedReason == "Diğer..." && otherReason.text == "") {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Lütfen diğer sebebi giriniz."),
+                                  ),
+                                );
+                                return;
+                              }
+
+
+
+
+                              //Entry datası oluşturulur. 
+                              final entryID = _dbService.createPushID(); 
+
+                              Entry entry = Entry( 
+                                entryID: entryID, 
+                                group: student.group, 
+                                number: student.number, 
+                                name: student.name,
+                                operator: "Entegre edilmedi!",
+                                exitTime: DateTime.now().toString(), 
+                                entryTime: null, 
+                                permission: selectedPermission, 
+                                reason: selectedReason,
+                                otherReason: otherReason.text
+                              ); 
+
+                              //Entry Hive'a pushlanır. 
+                              await _dbService.putToHive(
+                                pushID: entryID.toString(), 
+                                data: Entry.toMap(entry), 
+                                b: Hive.box(entryBox)
+                              ); 
+                              
+                              setState(() { 
+                                student.entryID = entryID; 
+                                student.state = STATEOUT; 
+                                widget.student.entryID = entryID;
+                              }); 
+
+                              StudentState studentState = StudentState(
+                                group: student.group, 
+                                number: student.number, 
+                                state: StudentStateEnum.values.byName(student.state!.toLowerCase()), 
+                                lastEntryID: entryID
+                              );
+
+                              //StudentState güncellenecek.
+                              _dbService.updateHive(
+                                path: "${student.group}_${student.number}", 
+                                data: StudentState.toMap(studentState), b: Hive.box(studentStateBox)
+                              ); 
+                              Navigator.pop(context, true); // ✅ başarılı
+                            },
+                            child: const Text("Kaydet"),
+                          ),
+                        ],
+                      )
+                    ],
                   ),
-                ],
+                ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context, false); // ❌ iptal
-                  },
-                  child: const Text("İptal"),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    //Entry datası oluşturulur.
-                    final entryID = _dbService.createPushID();
-                    Entry entry = Entry(
-                      entryID: entryID,
-                      group: student.group, 
-                      number: student.number, 
-                      exitTime: DateTime.now().toString(), 
-                      entryTime: null, 
-                      permission: selectedPermission, 
-                      reason: selectedReason
-                    );
-                    //Entry Hive'a yazılır.
-                    await _dbService.putToHive(pID: entryID, data: Entry.toFireBase(entry), b: Hive.box(entryBox));
-            
-                    setState(() {
-                      student.entryID = entryID;
-                      student.state = STATEOUT;
-                      widget.student.entryID = entryID;
-                    });
-            
-                    _dbService.updateHive(path: "${student.group}_${student.number}", data: Student.toFireBase(student), b: Hive.box(studentBox));
-                    Navigator.pop(context, true); // ✅ başarılı
-                  },
-                  child: const Text("Çıkışı Kaydet"),
-                ),
-              ]
             );
-          }
+          },
         );
+
       },
     );
 
@@ -264,6 +375,7 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
   // ────────────────────────────────
   // DURUM + İÇERİ / DIŞARI
   Widget _statusCard() {
+    final isInside = (st.state ?? "").toLowerCase() == STATEIN.toLowerCase();
     return Card(
       color: st.state == STATEIN ? Colors.green.shade50 : Colors.red.shade50,
       shape: RoundedRectangleBorder(
@@ -276,7 +388,7 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
           children: [
             Text(
               st.state == STATEIN
-                  ? "" : "Çıkış zamanı: ${formatTime(DateTime.tryParse(entry == null ? "" : entry!.exitTime))}\nİzin veren: ${entry == null  ? "" : entry!.permission}",
+                  ? "" : "Çıkış zamanı: ${DateTime.tryParse(entry == null ? "" : formatTimeString(entry!.exitTime))}\nİzin veren: ${entry == null  ? "" : entry!.permission}",
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -284,35 +396,13 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor:
-                      st.state == STATEIN ? Colors.red : Colors.green,
+                      isInside ? Colors.red : Colors.green,
                 ),
                 onPressed: _toggleStatus,
-                child: Text(st.state == STATEIN ? "Dışarı Çıkar" : "İçeri Al"),
+                child: Text(isInside ? "Dışarı Çıkar" : "İçeri Al"),
               ),
             ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:Colors.yellow,
-                ),
-                onPressed: () => addTestEntry(st),
-                child: Text("Add test value to hive."),
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.purple,
-                ),
-                onPressed: () => readEntryAndReload(st),
-                child: Text("Read the test values and update"),
-              ),
-            ),
-            
+              
           ],
         ),
       ),
@@ -353,18 +443,26 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
   // ────────────────────────────────
   // STATE
   void _toggleStatus() async {
-    if (st.state == STATEOUT) {
+    if (st.state!.toLowerCase() == STATEOUT.toLowerCase()) {
       // Dışardayken direkt içeri gir
 
 
       setState(() {
         st.state = STATEIN;
         entry!.entryTime = DateTime.now().toString();
-        widget.student.state = STATEIN;
+        widget.student.state = st.state;
       });
 
-      _dbService.updateHive(path: st.entryID!, data: Entry.toFireBase(entry!), b: Hive.box(entryBox));
-      _dbService.updateHive(path: "${st.group}_${st.number}", data: Student.toFireBase(st), b: Hive.box(studentBox));
+      _dbService.updateHive(path: st.entryID!.toString(), data: Entry.toMap(entry!), b: Hive.box(entryBox));
+
+      StudentState studentState = StudentState(
+        group: st.group, 
+        number: st.number, 
+        state: StudentStateEnum.values.byName(st.state!.toLowerCase()), 
+        lastEntryID: null
+      );
+
+      _dbService.updateHive(path: "${st.group}_${st.number}", data: StudentState.toMap(studentState), b: Hive.box(studentStateBox));
       setState(() {
         st.entryID = null;
       });
@@ -376,39 +474,23 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
     await showEntry(context, st);
   }
 
-  Future<void> addTestEntry(Student st) async {
-    final Entry entry = Entry(entryID: _dbService.createPushID(), group: st.group, number: st.number, exitTime: DateTime.now().toString(), entryTime: null, permission: "Test", reason: "Test Reason");
-    final data = Entry.toFireBase(entry); 
-    final lastEntryKey = entry.entryID;
-    await _dbService.putToHive(pID: lastEntryKey, path: null, data: data, b: Hive.box(entryBox));
-    setState(() {
-      st.entryID = lastEntryKey;
-      st.state = STATEOUT;
-    });
-    print("Entry for student : ${st.group}_${st.number} has been created under the ID: $lastEntryKey");
-    final path = "${st.group}_${st.number}";
-    await _dbService.updateHive(path: path, data: {entryIDDB: st.entryID}, b: Hive.box(studentBox));
-    await _dbService.updateHive(path: path, data: {stateDB: st.state}, b: Hive.box(studentBox));
-    print("Students Entry ID has been updated");
-  }
-
   void readEntryAndReload(Student st){
     final stud = _dbService.readFromHive(path: "${st.group}_${st.number}" ,b: Hive.box(studentBox));
 
-    final realStud = Student.fromFireBase(stud!);
+    final realStud = Student.fromMap(stud!);
     if (realStud.entryID == null) {
       print("Student has no entry ID.");
       return;
     }
 
-    final rawEntryData = _dbService.readFromHive(path: realStud.entryID!, b: Hive.box(entryBox));
+    final rawEntryData = _dbService.readFromHive(path: realStud.entryID!.toString(), b: Hive.box(entryBox));
 
     if (rawEntryData == null) {
       print("No entry found for ID in Hive: $st.entryID");
       return;
     }
 
-    final entry = Entry.fromFireBase(rawEntryData);
+    final entry = Entry.fromMap(rawEntryData);
 
     print("Entry read successfully:");
     print("Group      : ${entry.group}");
@@ -434,7 +516,3 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
   }
 }
 
-String formatTime(DateTime? t) {
-  if (t == null) return "—";
-  return "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
-}

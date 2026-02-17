@@ -30,7 +30,7 @@ class _EntryInfoPageState extends State<EntryInfoPage> {
       print("AA");
         throw Exception("There is no student for this entry data!");
       }
-      st = Student.fromFireBase(raw);
+      st = Student.fromMap(raw);
     });
   }
 

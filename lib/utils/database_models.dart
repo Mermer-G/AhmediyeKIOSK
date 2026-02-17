@@ -1,3 +1,4 @@
+import 'package:app1/Pages/settings.dart';
 import 'package:app1/Pages/studentInfo.dart';
 import 'package:flutter/material.dart';
 
@@ -9,22 +10,23 @@ const String stateDB  = "State";
 const String dormDB = "Dorm";
 const String phoneDB  = "Phone";
 const String supervisorDB  = "Supervisor";
+const String operatorDB  = "Operator";
 const String entryIDDB  = "EntryID";
 const String exitTimeDB = "ExitTime";
 const String entryTimeDB = "EntryTime";
 const String permissionDB = "Permission";
 const String reasonDB = "Reason";
+const String otherReasonDB = "OtherReason";
 
 class Student {
   String name;
   int number;
   String group;
-  String state;
   String supervisor;
+  String? state;
   String? dorm;
   String? phone;
-  String? entryID;
-
+  int? entryID;
   
 
 
@@ -36,38 +38,34 @@ class Student {
     required this.name, 
     required this.number, 
     required this.group, 
-    required this.state,
     required this.dorm,
     required this.phone,
-    required this.entryID,
-    required this.supervisor
+    required this.supervisor,
+    required this.entryID
   });
   ///This one is a factory constructor.
   ///factory gives it the ability to return any student
   ///
-  factory Student.fromFireBase(Map<String, dynamic> studentValues){
+  factory Student.fromMap(Map<String, dynamic> studentValues){
     return Student(
       name: studentValues[nameDB], 
-      number: int.tryParse(studentValues[numberDB]?.toString() ?? '') ?? 0, 
+      number: parseInt(studentValues[numberDB]) ?? -1, 
       group: studentValues[groupDB], 
       phone: studentValues[phoneDB],
-      state: studentValues[stateDB] ?? STATEIN,
       dorm: studentValues[dormDB],
-      entryID: studentValues[entryIDDB],
-      supervisor: studentValues[supervisorDB] 
+      supervisor: studentValues[supervisorDB],
+      entryID: parseInt(studentValues[entryIDDB])
     );
   }
 
-  static Map<String, dynamic> toFireBase(Student st){
+  static Map<String, dynamic> toMap(Student st){
     return {
       nameDB: st.name,
-      numberDB: st.number,
+      numberDB: parseInt(st.number),
       groupDB: st.group,
-      stateDB: st.state,
       phoneDB: st.phone,
-      entryIDDB: st.entryID,
       dormDB: st.dorm,
-      supervisorDB: st.supervisor
+      supervisorDB: st.supervisor,
     };
   }
 
@@ -94,45 +92,57 @@ class Student {
 }
 
 class Entry {
-  String entryID;
+  int entryID;
   String exitTime;
   String group;
   int number;
+  String name;
+  String operator;
   String? entryTime;
   String? permission;
   String? reason;
+  String? otherReason;
 
   Entry ({
     required this.entryID,
     required this.group,
     required this.number,
+    required this.name,
+    required this.operator,
     required this.exitTime,
     required this.entryTime,
     required this.permission,
-    required this.reason
+    required this.reason,
+    required this.otherReason
   });
 
-  factory Entry.fromFireBase(Map<String, dynamic> entryValues){
+  factory Entry.fromMap(Map<String, dynamic> entryValues){
     return Entry(
       entryID: entryValues[entryIDDB],
-      number: int.tryParse(entryValues[numberDB]?.toString() ?? '') ?? 0, 
       group: entryValues[groupDB], 
+      number: parseInt(entryValues[numberDB]) ?? -1, 
+      name: entryValues[nameDB] ?? "Yazılmamış", //New
+      operator: entryValues[operatorDB] ?? "Yazılmamış", //New
       exitTime: entryValues[exitTimeDB], 
       entryTime: entryValues[entryTimeDB], 
       permission: entryValues[permissionDB], 
       reason: entryValues[reasonDB], 
+      otherReason: entryValues[otherReasonDB] ?? "Yok", //New
     );
   }
 
-  static Map<String, dynamic> toFireBase(Entry et){
+  static Map<String, dynamic> toMap(Entry et){
     return {
       entryIDDB: et.entryID,
       exitTimeDB: et.exitTime,
-      numberDB: et.number,
+      numberDB: parseInt(et.number),
       groupDB: et.group,
+      nameDB: et.name,
+      operatorDB: et.operator,
       entryTimeDB: et.entryTime,
       permissionDB: et.permission,
-      reasonDB: et.reason
+      reasonDB: et.reason,
+      otherReasonDB: et.otherReason,
     };
   }
 
@@ -153,6 +163,51 @@ class Entry {
     ];
   }
 
+}
+
+enum StudentStateEnum {
+  inside,
+  outside,
+}
+
+class StudentState {
+  String group;
+  int number;
+  StudentStateEnum state;
+  int? lastEntryID;
+
+  StudentState({
+    required this.group,
+    required this.number,
+    required this.state,
+    required this.lastEntryID
+  });
+
+  factory StudentState.fromMap(Map<String, dynamic> stateValues){
+    return StudentState(
+      group: stateValues[groupDB], 
+      number: parseInt(stateValues[numberDB]) ?? -1,
+      state: () {
+        try {
+          return StudentStateEnum.values.byName(
+            stateValues[stateDB].toString(),
+          );
+        } catch (_) {
+          return StudentStateEnum.inside;
+        }
+      }(),
+      lastEntryID: stateValues[entryIDDB]
+    );
+  }
+
+  static Map<String, dynamic> toMap(StudentState state){
+    return {
+      groupDB: state.group,
+      numberDB: parseInt(state.number),
+      stateDB: state.state.name,
+      entryIDDB: state.lastEntryID
+    };
+  }
 }
 
 ///Has no use for now. If there is any it will be refactored
