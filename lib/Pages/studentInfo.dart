@@ -1,8 +1,11 @@
+import 'package:app1/Pages/entryInfo.dart';
+import 'package:app1/Pages/home.dart';
 import 'package:app1/Pages/settings.dart';
 import 'package:app1/utils/database_models.dart';
+import 'package:app1/utils/debugger.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import 'package:intl/intl.dart';
 import '../utils/database_service.dart';
 import '../utils/cache_revert_button.dart';
 
@@ -49,16 +52,16 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
       //If possible get the lastPushID (this will come from lister page)
       //If not skip below
       if(st.entryID == null){
-        print("Student has no entry ID");
+        AppLogger.instance.warn("Student has no entry ID");
         return;
       } 
-      print("${st.state}");
+      AppLogger.instance.warn("Student has state: ${st.state}");
       final entryMap = _dbService.readFromHive(path: st.entryID!.toString(), b: Hive.box(entryBox)); 
       if(entryMap == null){
-        print("It was null");
+        AppLogger.instance.warn("Student entry was null");
         return;
       }
-      print("Entry ID:${st.entryID}");
+      AppLogger.instance.warn("Entry ID:${st.entryID}");
       entry = Entry.fromMap(entryMap);
     });
   }
@@ -85,6 +88,7 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
               /// 🟨 BAĞLAM
               _infoCard("Yatakhane", st.dorm),
               _infoCard("Açıklama", entry?.reason),
+              if(entry?.reason == "Diğer...") _infoCard("Diğer sebep:", entry?.otherReason),
 
               const SizedBox(height: 20),
 
@@ -154,6 +158,14 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
       "Sohbet",
       "Market",
       "Terzi",
+      "Teravih",
+      "Mukabele",
+      "İftar",
+      "Staj",
+      "Dişçi",
+      "ATM",
+      "Eczane",
+      "Okul",
       "Gecelik İzin",
       "Şehir Dışı",
       "Diğer...",
@@ -181,8 +193,8 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
     }
 
     final otherReason = TextEditingController();
-    String? selectedReason;
-    String? selectedPermission;
+    String? selectedReason = reasons.contains(HomePage.reason) ? HomePage.reason : null;
+    String? selectedPermission = permisions.contains(HomePage.permission) ? HomePage.permission : null;
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -211,7 +223,7 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
                       const SizedBox(height: 10),
 
                       Text(
-                        "Çıkış Tarihi:\n${formatDate(DateTime.now())}",
+                        "Çıkış Tarihi:\n${formatDateTime(DateTime.now())}",
                         style: const TextStyle(fontSize: 13, color: Colors.grey),
                       ),
 
@@ -228,6 +240,9 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
                             );
                           }).toList(),
                         onChanged: (value) {
+                          setState(() {
+                            HomePage.reason = value;
+                          });
                           setDialogState(() {
                             selectedReason = value;
                           });
@@ -241,9 +256,15 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
                         hint: const Text("İzin veren hocayı seçiniz."),
                         isExpanded: true,
                         items: permisions
-                            .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                            .map((item) => DropdownMenuItem(
+                              value: item, 
+                              child: Text(item)
+                              ))
                             .toList(),
                         onChanged: (value) {
+                          setState(() {
+                            HomePage.permission = value;
+                          });
                           setDialogState(() {
                             selectedPermission = value;
                           });
@@ -336,7 +357,7 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
                               );
 
                               //StudentState güncellenecek.
-                              _dbService.updateHive(
+                              await _dbService.updateHive(
                                 path: "${student.group}_${student.number}", 
                                 data: StudentState.toMap(studentState), b: Hive.box(studentStateBox)
                               ); 
@@ -386,17 +407,31 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              st.state == STATEIN
-                  ? "" : "Çıkış zamanı: ${DateTime.tryParse(entry == null ? "" : formatTimeString(entry!.exitTime))}\nİzin veren: ${entry == null  ? "" : entry!.permission}",
-            ),
-            const SizedBox(height: 16),
+            if (entry != null) ...[
+              Text(
+                st.state == STATEIN
+                    ? ""
+                    : "Çıkış zamanı: ${formatDateTime(DateTime.tryParse(entry!.exitTime)!)}\nİzin veren: ${entry!.permission}",
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                  ),
+                  onPressed: () => _openEntryInfo(entry),
+                  child: Text("Giriş Çıkış Bilgilerini Görüntüle."),
+                ),
+              ),
+            ],
+            if (!kIsWeb) const SizedBox(height: 16),
+            if (!kIsWeb)
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      isInside ? Colors.red : Colors.green,
+                  backgroundColor: isInside ? Colors.red : Colors.green,
                 ),
                 onPressed: _toggleStatus,
                 child: Text(isInside ? "Dışarı Çıkar" : "İçeri Al"),
@@ -442,6 +477,15 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
 
   // ────────────────────────────────
   // STATE
+  void _openEntryInfo(Entry? entry) async{
+    if (entry == null){
+      AppLogger.instance.error("Entry was null");
+      return;
+    }
+    AppLogger.instance.log("Student Info'dan --> Entry Info'ya geçildi");
+    await Navigator.push(context, MaterialPageRoute(builder: (context) => EntryInfoPage(entry: entry))); // yeni info page gelecek buraya.
+  }
+
   void _toggleStatus() async {
     if (st.state!.toLowerCase() == STATEOUT.toLowerCase()) {
       // Dışardayken direkt içeri gir
@@ -474,31 +518,34 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
     await showEntry(context, st);
   }
 
+
+
+
   void readEntryAndReload(Student st){
     final stud = _dbService.readFromHive(path: "${st.group}_${st.number}" ,b: Hive.box(studentBox));
 
     final realStud = Student.fromMap(stud!);
     if (realStud.entryID == null) {
-      print("Student has no entry ID.");
+      AppLogger.instance.warn("Student has no entry ID.");
       return;
     }
 
     final rawEntryData = _dbService.readFromHive(path: realStud.entryID!.toString(), b: Hive.box(entryBox));
 
     if (rawEntryData == null) {
-      print("No entry found for ID in Hive: $st.entryID");
+      AppLogger.instance.warn("No entry found for ID in Hive: $st.entryID");
       return;
     }
 
     final entry = Entry.fromMap(rawEntryData);
 
-    print("Entry read successfully:");
-    print("Group      : ${entry.group}");
-    print("Number     : ${entry.number}");
-    print("Entry Time : ${entry.entryTime}");
-    print("Exit Time  : ${entry.exitTime}");
-    print("Permission : ${entry.permission}");
-    print("Reason     : ${entry.reason}");
+    AppLogger.instance.log("Entry read successfully:");
+    AppLogger.instance.log("Group      : ${entry.group}");
+    AppLogger.instance.log("Number     : ${entry.number}");
+    AppLogger.instance.log("Entry Time : ${entry.entryTime}");
+    AppLogger.instance.log("Exit Time  : ${entry.exitTime}");
+    AppLogger.instance.log("Permission : ${entry.permission}");
+    AppLogger.instance.log("Reason     : ${entry.reason}");
     
     setState(() {
     });

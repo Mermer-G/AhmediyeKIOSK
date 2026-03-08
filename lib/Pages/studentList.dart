@@ -1,5 +1,6 @@
 import 'package:app1/Pages/studentInfo.dart';
 import 'package:app1/utils/database_models.dart';
+import 'package:app1/utils/debugger.dart';
 import 'package:flutter/material.dart';
 import 'package:app1/Pages/home.dart';
 
@@ -119,7 +120,7 @@ class _StudentListerPageState extends State<StudentListerPage> {
     if (_rows.isNotEmpty){
       _rows.clear();
     }
-    print("Shown student number: ${shownStudents.length}");
+    AppLogger.instance.log("Shown student number: ${shownStudents.length}");
     //For rows we need to create dataCells
     shownStudents.forEach((student) {
       final state = student.state ?? "Belirlenmemiş";
@@ -213,10 +214,12 @@ class _StudentListerPageState extends State<StudentListerPage> {
         break;
       case 3:
         if (_sortAscending){
-          shownStudents.sort((a,b) => a.state!.toLowerCase().compareTo(b.state!.toLowerCase()));
+          shownStudents.sort((a,b) => 
+            (a.state ?? '').toLowerCase().compareTo((b.state ?? '').toLowerCase()));
         }
         else{
-          shownStudents.sort((a,b) => b.state!.toLowerCase().compareTo(a.state!.toLowerCase()));
+          shownStudents.sort((a,b) => 
+            (b.state ?? '').toLowerCase().compareTo((a.state ?? '').toLowerCase()));
         }
         break;
     }
@@ -228,7 +231,7 @@ class _StudentListerPageState extends State<StudentListerPage> {
       _sortColumnIndex = sortingColumnIndex;
       _sortAscending = sortAscending;
     });
-    print("Tapped! index: ${sortingColumnIndex}, ascending: ${sortAscending} ");
+    AppLogger.instance.warn("Tapped! index: ${sortingColumnIndex}, ascending: ${sortAscending} ");
   }
 
 

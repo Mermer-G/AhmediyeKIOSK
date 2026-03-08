@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:app1/utils/byte_calculator.dart';
+import 'package:app1/utils/debugger.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'cache_helper.dart';
@@ -16,8 +18,19 @@ int byteSizeOf(Map<String, dynamic> data) {
 }
 
 class DatabaseService {
-  final FirebaseDatabase firebaseDatabase = FirebaseDatabase.instance;
-  final CacheHelper _cacheHelper = CacheHelper.instance;
+  late final FirebaseDatabase firebaseDatabase;
+
+  DatabaseService() {
+    try {
+      firebaseDatabase = FirebaseDatabase.instanceFor(
+      app: Firebase.app(),
+      databaseURL: Firebase.app().options.databaseURL!,
+    );
+    } catch (e, track) {
+      AppLogger.instance.log("DataBase Service Can't be instenced:  $e");
+      AppLogger.instance.log("Track:  $track");
+    }
+  }
 
   // ===============================
   // FIREBASE READ
@@ -29,7 +42,7 @@ class DatabaseService {
           await ref.get().timeout(const Duration(seconds: 10));
       return snapshot.exists ? snapshot : null;
     } catch (e) {
-      print('Timeout veya hata: $e');
+      AppLogger.instance.error('Timeout veya hata: $e path: $path');
       return null;
     }
   }
@@ -54,7 +67,7 @@ class DatabaseService {
     dynamic data;
 
     if (path == null || path.isEmpty) {
-      print("The path: $path from box: ${b.name} is null or empty!");
+      AppLogger.instance.error("The path: $path from box: ${b.name} is null or empty!");
       return null;
     }
 

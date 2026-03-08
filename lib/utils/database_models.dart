@@ -1,5 +1,6 @@
 import 'package:app1/Pages/settings.dart';
 import 'package:app1/Pages/studentInfo.dart';
+import 'package:app1/utils/debugger.dart';
 import 'package:flutter/material.dart';
 
 // 🔑 DB field constants
@@ -110,24 +111,41 @@ class Entry {
     required this.name,
     required this.operator,
     required this.exitTime,
-    required this.entryTime,
-    required this.permission,
-    required this.reason,
-    required this.otherReason
+    this.entryTime,
+    this.permission,
+    this.reason,
+    this.otherReason
   });
 
-  factory Entry.fromMap(Map<String, dynamic> entryValues){
+  // factory Entry.fromMap(Map<String, dynamic> entryValues){
+  //   return Entry(
+  //     entryID: entryValues[entryIDDB],
+  //     group: entryValues[groupDB], 
+  //     number: parseInt(entryValues[numberDB]) ?? -1, 
+  //     name: entryValues[nameDB] ?? "Yazılmamış", //New
+  //     operator: entryValues[operatorDB] ?? "Yazılmamış", //New
+  //     exitTime: entryValues[exitTimeDB], 
+  //     entryTime: entryValues[entryTimeDB] ?? "Daha giriş yapılmamış", 
+  //     permission: entryValues[permissionDB], 
+  //     reason: entryValues[reasonDB], 
+  //     otherReason: entryValues[otherReasonDB] ?? "Yok", //New
+  //   );
+  // }
+
+  factory Entry.fromMap(Map<dynamic, dynamic> rawMap) {
+    final entryValues = Map<String, dynamic>.from(rawMap); // ❗ zorunlu cast
+
     return Entry(
-      entryID: entryValues[entryIDDB],
-      group: entryValues[groupDB], 
-      number: parseInt(entryValues[numberDB]) ?? -1, 
-      name: entryValues[nameDB] ?? "Yazılmamış", //New
-      operator: entryValues[operatorDB] ?? "Yazılmamış", //New
-      exitTime: entryValues[exitTimeDB], 
-      entryTime: entryValues[entryTimeDB], 
-      permission: entryValues[permissionDB], 
-      reason: entryValues[reasonDB], 
-      otherReason: entryValues[otherReasonDB] ?? "Yok", //New
+      entryID: entryValues[entryIDDB] is int ? entryValues[entryIDDB] : int.tryParse(entryValues[entryIDDB].toString()) ?? -1,
+      group: entryValues[groupDB]?.toString() ?? "Bilinmiyor",
+      number: entryValues[numberDB] is int ? entryValues[numberDB] : int.tryParse(entryValues[numberDB].toString()) ?? -1,
+      name: entryValues[nameDB]?.toString() ?? "Yazılmamış",
+      operator: entryValues[operatorDB]?.toString() ?? "Yazılmamış",
+      exitTime: entryValues[exitTimeDB]?.toString() ?? "Bilinmiyor",
+      entryTime: entryValues[entryTimeDB]?.toString() ?? "Daha giriş yapılmamış",
+      permission: entryValues[permissionDB]?.toString() ?? "Bilinmiyor",
+      reason: entryValues[reasonDB]?.toString() ?? "Bilinmiyor",
+      otherReason: entryValues[otherReasonDB]?.toString().isEmpty == true ? "Yok" : entryValues[otherReasonDB]?.toString() ?? "Yok",
     );
   }
 
@@ -218,7 +236,7 @@ List<T> parseToDataType<T>(//This method is only used for parsing values of a wh
   final List<T> result = [];
 
   rawReadValue.forEach((key, value) {
-    print("Types while parsing: Key:($key)${key.runtimeType}, Value:($value)${value.runtimeType}");
+    AppLogger.instance.log("Types while parsing: Key:($key)${key.runtimeType}, Value:($value)${value.runtimeType}");
     result.add(
       creator(                            
         Map<String, dynamic>.from(value) // 👉 {Name: Ali}

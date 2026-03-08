@@ -1,5 +1,7 @@
+import 'package:app1/Pages/settings.dart';
 import 'package:app1/utils/database_models.dart';
 import 'package:app1/utils/database_service.dart';
+import 'package:app1/utils/debugger.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
@@ -27,7 +29,7 @@ class _EntryInfoPageState extends State<EntryInfoPage> {
       //If not skip below 
       final raw = _dbService.readFromHive(path: "${ent.group}_${ent.number}", b: Hive.box(studentBox)); 
       if (raw == null){
-      print("AA");
+        AppLogger.instance.error("There is no student for this entry data!");
         throw Exception("There is no student for this entry data!");
       }
       st = Student.fromMap(raw);
@@ -54,12 +56,14 @@ class _EntryInfoPageState extends State<EntryInfoPage> {
             padding: const EdgeInsets.all(16),
             children: [
               /// 🟨 BAĞLAM
+              _infoCard("Giriş-Çıkış ID:", ent.entryID.toString()),
               _infoCard("Adı Soyadı:", st.name),
               _infoCard("Grubu:", ent.group.toString()),
               _infoCard("Numarası:", ent.number.toString()),
               _infoCard("Çıkış Sebebi:", ent.reason),
+              if(ent.reason == "Diğer...") _infoCard("Diğer sebep:", ent.otherReason),
               _infoCard("İzin Alınan Hoca:", ent.permission),
-              _infoCard("Çıkış Zamanı:", ent.exitTime.split('.')[0]),
+              _infoCard("Çıkış Zamanı:", formatDateTime(DateTime.tryParse(ent.exitTime)!)),
               _infoCard("Giriş Zamanı:", (ent.entryTime == null || ent.entryTime == "") ? "Daha yurda giriş yapmadı." : ent.entryTime!.split('.')[0])
             ],
           ),

@@ -1,0 +1,9 @@
+{
+  "projects": {
+    "dev": "kiosk-development-aaec9",
+    "release": "ahmediye-kiosk",
+    "default": "ahmediye-kiosk"
+  },
+  "targets": {},
+  "etags": {}
+}

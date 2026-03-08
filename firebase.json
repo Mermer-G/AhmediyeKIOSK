@@ -1,1 +1,50 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"ahmediye-kiosk","appId":"1:566523224278:android:df2b688d40ca26ffef2977","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"ahmediye-kiosk","configurations":{"android":"1:566523224278:android:df2b688d40ca26ffef2977","ios":"1:566523224278:ios:4d46a7096f82d927ef2977"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "ahmediye-kiosk",
+          "appId": "1:566523224278:android:df2b688d40ca26ffef2977",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "kiosk-development-aaec9",
+          "configurations": {
+            "android": "1:677037235750:android:c939bcb107c9139a7010e7",
+            "web": "1:677037235750:web:90c7b1c9f8e9b8937010e7"
+          }
+        },
+        "lib/firebase_options_dev.dart": {
+          "projectId": "kiosk-development-aaec9",
+          "configurations": {
+            "android": "1:677037235750:android:c939bcb107c9139a7010e7",
+            "web": "1:677037235750:web:90c7b1c9f8e9b8937010e7"
+          }
+        },
+        "lib/firebase_options_release.dart": {
+          "projectId": "ahmediye-kiosk",
+          "configurations": {
+            "android": "1:566523224278:android:df2b688d40ca26ffef2977",
+            "web": "1:566523224278:web:c36e63b546f867abef2977"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

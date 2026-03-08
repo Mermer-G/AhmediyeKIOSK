@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:app1/utils/debugger.dart';
 import 'package:flutter/foundation.dart';
 
 class _PendingJob {
@@ -22,7 +23,7 @@ class CacheHelper extends ChangeNotifier {
   int get remainingSeconds => _remainingSeconds;
 
   void schedule(Future<void> Function() action) {
-    print("cache helper is called!");
+    AppLogger.instance.log("cache helper is called!");
     _commitPending();
 
     _pendingJob = _PendingJob(action);

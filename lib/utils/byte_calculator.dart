@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:app1/utils/debugger.dart';
+
 class ByteAccumulator {
   static int _totalBytes = 0;
   static DateTime? _lastUpdate;
@@ -20,7 +22,7 @@ class ByteAccumulator {
       final diff = DateTime.now().difference(_lastUpdate!);
 
       if (diff.inSeconds >= 2) {
-        print("Toplam gönderilen veri: $_totalBytes byte");
+        AppLogger.instance.warn("Toplam gönderilen veri: $_totalBytes byte");
 
         // reset
         _totalBytes = 0;

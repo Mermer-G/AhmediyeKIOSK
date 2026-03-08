@@ -1,7 +1,9 @@
 import 'package:app1/Pages/entryInfo.dart';
+import 'package:app1/Pages/settings.dart';
 import 'package:app1/Pages/studentList.dart';
 import 'package:app1/utils/database_models.dart';
 import 'package:app1/utils/database_service.dart';
+import 'package:app1/utils/debugger.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
@@ -30,31 +32,47 @@ class _entryListerPageState extends State<entryListerPage> {
   final groupController = TextEditingController();
   final numberController = TextEditingController();
   final exitTimeController = TextEditingController();
+  final loadAmountController = TextEditingController();
   String groupFilter = "";
   String numberFilter = "";
   String exitTimeFilter = "";
+  int loadAmount = 50;
+  int loadedDataAmount = 0;
 
   @override
   void initState() {
     super.initState();
     _fetchDataFromHive();
+    loadAmountController.text = loadAmount.toString();
   }
 
   Future<void> _fetchDataFromHive() async{
     try {
-      print('===== VERİ ÇEKME BAŞLADI =====');
-      final rawMap = Hive.box(entryBox).toMap();
-      print("Keys[${rawMap.keys.first.runtimeType}]: ${rawMap.keys.first}, Values[${rawMap.values.first.runtimeType}]: ${rawMap.values.first}");
-      
-      rawMap.forEach((k,v){
-        print("Entry nodeKey in hive: $k");
-        Map<String, dynamic> valuesMap = Map<String, dynamic>.from(v as Map);
-        entries.add(
-          Entry.fromMap(valuesMap)
-        );
+      setState(() {
+        _isLoading = true;
       });
+      AppLogger.instance.log('===== VERİ ÇEKME BAŞLADI: Entry =====');
+      final box = Hive.box(entryBox);
 
-      print("Entry count: ${entries.length} ");
+      AppLogger.instance.log("Box entry count: ${box.length}");
+      final latest = box.keys.toList()
+        ..sort((a, b) => int.parse(b).compareTo(int.parse(a)));
+
+      // entries.clear();
+      // entries = latest.take(loadAmount)
+      //   .map((k) => Entry.fromMap(box.get(k)))
+      //   .toList();
+
+      entries = latest.take(loadAmount)
+        .map((k) {
+          final value = box.get(k);
+          AppLogger.instance.log("KEY: $k VALUE: $value");
+          return Entry.fromMap(value);
+        })
+        .toList();
+      
+      loadedDataAmount = entries.length;
+      AppLogger.instance.log("Entry count: $loadedDataAmount ");
       
       //This is just for testing shown data will be set in somewhere different.
       // convertValuesToListItems();
@@ -101,7 +119,6 @@ class _entryListerPageState extends State<entryListerPage> {
     if(raw is Map){
       //Here keys are nodeKeys(IDs) of students and the values are value blocks A1 : {Dorm:..., Name:...}
       Map<String, dynamic> stringMap = raw.map((key,value) => MapEntry(key.toString(), value));
-      print("A");
       returnList = parseToDataType(stringMap, Entry.fromMap);
     }
 
@@ -135,22 +152,38 @@ class _entryListerPageState extends State<entryListerPage> {
         cells: [
         DataCell(Text(entry.group)),  
         DataCell(Text(entry.number.toString())), 
-        DataCell(Text(entry.exitTime.split('.')[0])),],
+        if (DateTime.tryParse(entry.exitTime) != null)
+          DataCell(Text(formatDateTime(DateTime.tryParse(entry.exitTime)!)))],
 
         color: WidgetStateProperty.resolveWith((states) {
-          if (entry.entryTime == null) {
-            return Colors.red.shade100;
-          }
-          if (states.contains(WidgetState.selected)) {
-            return Colors.blue.shade50;
-          }
-          return Colors.grey.shade100;
-        }),
+        // entryTime default value mu?
+        if (entry.entryTime == "Daha giriş yapılmamış") {
+          return Colors.red.shade100;
+        }
+
+        // widget selected mi?
+        if (states.contains(WidgetState.selected)) {
+          return Colors.blue.shade50;
+        }
+
+        // default
+        return Colors.grey.shade100;
+      }),
       ));
     });
     _isLoading = false;
-    print("Number of students in the table: $numberOfstudents");
+    AppLogger.instance.log("Number of students in the table: $numberOfstudents");
   
+  }
+
+  void setAmountAndReload() async{
+    setState(() {
+      var value = int.tryParse(loadAmountController.text);
+      if (value != null ){
+        loadAmount = value;
+        _fetchDataFromHive();
+      }
+    });
   }
 
   void applyFilterAndSort(String numberF, String groupF, String exitTimeF) {
@@ -202,7 +235,7 @@ class _entryListerPageState extends State<entryListerPage> {
       _sortColumnIndex = sortingColumnIndex;
       _sortAscending = sortAscending;
     });
-    print("Tapped! index: ${sortingColumnIndex}, ascending: ${sortAscending} ");
+    AppLogger.instance.log("Tapped! index: ${sortingColumnIndex}, ascending: ${sortAscending} ");
   }
 
   DataTable drawtable() {
@@ -270,6 +303,29 @@ class _entryListerPageState extends State<entryListerPage> {
           },
           child: const Text("Filtreleri temizle"),
         ),
+        const SizedBox(height: 8),
+        Center(child: Text("Listede gösterilen veri miktarı:")),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: loadAmountController,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+
+            const SizedBox(width: 12),
+
+            ElevatedButton(
+              onPressed: setAmountAndReload,
+              child: const Text("Kaydet"),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Center(child: Text("Yüklenen veri adedi: $loadedDataAmount")),
       ],
     );
   }
