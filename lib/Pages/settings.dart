@@ -1,3 +1,4 @@
+import 'package:app1/main.dart';
 import 'package:app1/utils/database_models.dart';
 import 'package:app1/utils/database_service.dart';
 import 'package:app1/utils/debugger.dart';
@@ -293,9 +294,24 @@ class SettingsPageState extends State<SettingsPage> {
     return parseToStudents(snapshot?.value);
   }
 
+  // Future<List<Entry>> _fetchEntryDataFromFirebase(DatabaseService db) async {
+  //   final snapshot = await db.readFromDB(path: 'Entry');
+  //   return parseToEntries(snapshot?.value);
+  // }
+
   Future<List<Entry>> _fetchEntryDataFromFirebase(DatabaseService db) async {
-    final snapshot = await db.readFromDB(path: 'Entry');
-    return parseToEntries(snapshot?.value);
+  final app = Firebase.app(fireBaseAppName);
+
+  final ref = FirebaseDatabase.instanceFor(
+    app: app,
+    databaseURL: app.options.databaseURL!,
+  )
+  .ref('Entry')
+  .orderByChild(entryIDDB)
+  .limitToLast(300);
+    final snapshot = await ref.get();
+
+    return parseToEntries(snapshot.value);
   }
 
   Future<List<StudentState>> _fetchStudentStateDataFromFireBase(DatabaseService db) async {

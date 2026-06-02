@@ -155,6 +155,8 @@ class _HomePageState extends State<HomePage> {
       mergeStudentData();
       AppLogger.instance.log("MERGE DONE");
 
+      
+
       AppLogger.instance.log("ALL INIT DONE - Uygulama hazır. \n \n \n");
 
     } catch (e, stack) {

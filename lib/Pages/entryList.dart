@@ -20,7 +20,6 @@ class _entryListerPageState extends State<entryListerPage> {
 
   bool _isLoading = true;
   String? _errorMessage;
-  final DatabaseService _databaseService = DatabaseService();
   // Bu metod çağrılır sıralama butonuna basıldığında
   int _sortColumnIndex = 2;
   bool _sortAscending = false;

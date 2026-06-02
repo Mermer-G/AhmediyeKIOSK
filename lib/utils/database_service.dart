@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:app1/main.dart';
 import 'package:app1/utils/byte_calculator.dart';
 import 'package:app1/utils/debugger.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'cache_helper.dart';
 
 const String studentBox = "StudentBox";
 const String entryBox = "EntryBox";
@@ -23,8 +23,8 @@ class DatabaseService {
   DatabaseService() {
     try {
       firebaseDatabase = FirebaseDatabase.instanceFor(
-      app: Firebase.app(),
-      databaseURL: Firebase.app().options.databaseURL!,
+      app: Firebase.app(fireBaseAppName),
+      databaseURL: Firebase.app(fireBaseAppName).options.databaseURL!,
     );
     } catch (e, track) {
       AppLogger.instance.log("DataBase Service Can't be instenced:  $e");
@@ -37,6 +37,7 @@ class DatabaseService {
   // ===============================
   Future<DataSnapshot?> readFromDB({required String path}) async {
     final DatabaseReference ref = firebaseDatabase.ref().child(path);
+    
     try {
       final DataSnapshot snapshot =
           await ref.get().timeout(const Duration(seconds: 10));

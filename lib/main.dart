@@ -5,18 +5,18 @@ import 'package:app1/utils/database_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'firebase_options_dev.dart' as dev;
-import 'firebase_options_release.dart' as release;
+import 'firebase_options_release.dart' as prod;
 
 // const env = String.fromEnvironment('ENV');
-const bool DEVBUILD = false; 
+const bool DEVBUILD = true; 
 
 FirebaseOptions get firebaseOptions {
-  if (DEVBUILD) {
-    return dev.DefaultFirebaseOptions.currentPlatform;
-  } else {
-    return release.DefaultFirebaseOptions.currentPlatform;
-  }
+  return DEVBUILD
+      ? dev.DefaultFirebaseOptions.currentPlatform
+      : prod.DefaultFirebaseOptions.currentPlatform;
 }
+
+String get fireBaseAppName => DEVBUILD ? 'dev' : 'prod';
 
 
 void main() async {
@@ -24,24 +24,26 @@ void main() async {
 
   AppLogger.instance.warn("Build Time: ${DateTime.now()}");
 
-  try {
-    if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp(options: firebaseOptions);
-      AppLogger.instance.log("First init succes!");
-    }
-  } catch (e, stack) {
-    // Firebase.apps erişimi bile iOS Safari'de patlıyor
-    // Direkt initializeApp dene
-    AppLogger.instance.log("⚠️ First init problem was: $e");
-    AppLogger.instance.log("⚠️ First init trace was: $stack");
-    try {
+  // try {
+  //   if (Firebase.apps.isEmpty) {
+  //     await Firebase.initializeApp(options: firebaseOptions);
+  //     AppLogger.instance.log("First init succes!");
+  //   }
+  // } catch (e, stack) {
+  //   // Firebase.apps erişimi bile iOS Safari'de patlıyor
+  //   // Direkt initializeApp dene
+  //   AppLogger.instance.log("⚠️ First init problem was: $e");
+  //   AppLogger.instance.log("⚠️ First init trace was: $stack");
+  //   try {
       
-      await Firebase.initializeApp(options: firebaseOptions);
-      AppLogger.instance.log("Second init succes!");
-    } catch (e2) {
-      AppLogger.instance.log("⚠️ Firebase init: $e2");
-    }
-  }
+  //     await Firebase.initializeApp(options: firebaseOptions);
+  //     AppLogger.instance.log("Second init succes!");
+  //   } catch (e2) {
+  //     AppLogger.instance.log("⚠️ Firebase init: $e2");
+  //   }
+  // }
+
+  await initFirebaseSafe();
 
   await Hive.initFlutter();
   await Hive.openBox(studentBox);
@@ -49,6 +51,10 @@ void main() async {
   await Hive.openBox(studentStateBox);
   await Hive.openBox(metaBox);
 
+
+  AppLogger.instance.warn("Forced DB URL: ${Firebase.app(fireBaseAppName).options.databaseURL}");
+  // AppLogger.instance.warn("Normal DB URL: ${Firebase.app().options.databaseURL}");
+  AppLogger.instance.warn("DB App name: $fireBaseAppName");
   runApp(const MyApp());
 }
 
@@ -58,6 +64,56 @@ void main() async {
 //   runApp(const MyApp());
 // }
 
+Future<void> initFirebaseSafe() async {
+  final String name = fireBaseAppName;
+
+  try {
+    // 1. deneme
+    try {
+      await Firebase.initializeApp(
+        name: name,
+        options: firebaseOptions,
+      );
+
+      await Firebase.initializeApp(
+        options: firebaseOptions, // DEFAULT app
+      );
+
+      AppLogger.instance.log("✅ First init success: $name");
+    } catch (e) {
+      AppLogger.instance.log("⚠️ First init failed: $e");
+
+      // Eğer zaten varsa, al
+      try {
+        Firebase.app(name);
+        AppLogger.instance.log("ℹ️ App already exists, using existing: $name");
+      } catch (_) {
+        rethrow;
+      }
+    }
+  } catch (e, stack) {
+    AppLogger.instance.log("⚠️ Outer init problem: $e");
+    AppLogger.instance.log("⚠️ Stack: $stack");
+
+    // 2. deneme (force retry)
+    try {
+      await Future.delayed(const Duration(milliseconds: 200));
+
+      await Firebase.initializeApp(
+        name: name,
+        options: firebaseOptions,
+      );
+
+      await Firebase.initializeApp(
+        options: firebaseOptions, // DEFAULT app
+      );
+
+      AppLogger.instance.log("✅ Second init success: $name");
+    } catch (e2) {
+      AppLogger.instance.log("❌ Firebase init totally failed: $e2");
+    }
+  }
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});

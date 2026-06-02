@@ -1,5 +1,4 @@
 import 'package:app1/Pages/settings.dart';
-import 'package:app1/Pages/studentInfo.dart';
 import 'package:app1/utils/debugger.dart';
 import 'package:flutter/material.dart';
 

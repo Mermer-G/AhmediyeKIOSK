@@ -2,7 +2,6 @@ import 'package:app1/Pages/studentInfo.dart';
 import 'package:app1/utils/database_models.dart';
 import 'package:app1/utils/debugger.dart';
 import 'package:flutter/material.dart';
-import 'package:app1/Pages/home.dart';
 
 class StudentListerPage extends StatefulWidget {
   final List<Student> students;
