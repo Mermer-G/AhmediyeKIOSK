@@ -1,25 +1,25 @@
-import 'package:app1/Pages/studentInfo.dart';
+import 'package:app1/Pages/memerInfo.dart';
 import 'package:app1/utils/database_models.dart';
 import 'package:app1/utils/debugger.dart';
 import 'package:flutter/material.dart';
 
-class StudentListerPage extends StatefulWidget {
-  final List<Student> students;
+class MemberListerPage extends StatefulWidget {
+  final List<Member> members;
   final int sortColumnIndex;
   final bool sortAscending;
   final String groupFilter;
 
 
-  const StudentListerPage({
+  const MemberListerPage({
     super.key,
-    required this.students,
+    required this.members,
     required this.sortColumnIndex,
     required this.sortAscending,
     required this.groupFilter
   });
 
   @override
-  State<StudentListerPage> createState() => _StudentListerPageState();
+  State<MemberListerPage> createState() => _MemberListerPageState();
 }
 
 class FilterTextField extends StatelessWidget {
@@ -70,9 +70,9 @@ class FilterTextField extends StatelessWidget {
   }
 }
 
-class _StudentListerPageState extends State<StudentListerPage> {
-  List<Student> students = [];
-  List<Student> shownStudents = []; 
+class _MemberListerPageState extends State<MemberListerPage> {
+  List<Member> members = [];
+  List<Member> shownMembers = []; 
 
   bool _isLoading = true;
   String? _errorMessage;
@@ -101,7 +101,7 @@ class _StudentListerPageState extends State<StudentListerPage> {
     groupFilter = widget.groupFilter;
     groupController.text = widget.groupFilter;
     _isLoading = false;
-    students = widget.students;
+    members = widget.members;
     
   }
 
@@ -113,35 +113,35 @@ class _StudentListerPageState extends State<StudentListerPage> {
     
     // We need columns and rows
     //Columns:
-    _columns = Student.columns(setSortingFields);
+    _columns = Member.columns(setSortingFields);
   
     //Rows:
     if (_rows.isNotEmpty){
       _rows.clear();
     }
-    AppLogger.instance.log("Shown student number: ${shownStudents.length}");
+    AppLogger.instance.log("Shown member number: ${shownMembers.length}");
     //For rows we need to create dataCells
-    shownStudents.forEach((student) {
-      final state = student.state ?? "Belirlenmemiş";
+    shownMembers.forEach((member) {
+      final state = member.state ?? "Belirlenmemiş";
       _rows.add(DataRow(
         onSelectChanged: (selected) async {
           if (selected == true) {
-            await Navigator.push(context, MaterialPageRoute(builder: (context) => StudentInfoPage(pushID: "${student.group}_${student.number}", student: student)));
+            await Navigator.push(context, MaterialPageRoute(builder: (context) => MemberInfoPage(pushID: "${member.group}_${member.number}", member: member)));
             setState(() {
               
             });       
           }
         },
         cells: [
-        DataCell(Text(student.group)),  
-        DataCell(Text(student.number.toString())), 
+        DataCell(Text(member.group)),  
+        DataCell(Text(member.number.toString())), 
         DataCell(
           SizedBox(
             width: 150, // sabit genişlik ver
             child: FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
-              child: Text(student.name),
+              child: Text(member.name),
             ),
           )
         ),
@@ -171,53 +171,53 @@ class _StudentListerPageState extends State<StudentListerPage> {
 
   void applyFilterAndSort(String nameF, String numberF, String groupF, String stateF) {
     //Filter
-    shownStudents = students;    
+    shownMembers = members;    
     if (nameF.isNotEmpty){
-      shownStudents = shownStudents.where((student) => student.name.toString().toLowerCase().contains(nameF.toLowerCase())).toList();
+      shownMembers = shownMembers.where((member) => member.name.toString().toLowerCase().contains(nameF.toLowerCase())).toList();
     }
     if (groupF.isNotEmpty){
-      shownStudents = shownStudents.where((student) => student.group.toString().toLowerCase().contains(groupF.toLowerCase())).toList();
+      shownMembers = shownMembers.where((member) => member.group.toString().toLowerCase().contains(groupF.toLowerCase())).toList();
     }
     if (numberF.isNotEmpty){
-      shownStudents = shownStudents.where((student) => student.number.toString().toLowerCase() == (numberF.toLowerCase())).toList();
+      shownMembers = shownMembers.where((member) => member.number.toString().toLowerCase() == (numberF.toLowerCase())).toList();
     }
     if (stateF.isNotEmpty){
-      shownStudents = shownStudents.where((student) => student.state.toString().toLowerCase().contains(stateF.toLowerCase())).toList();
+      shownMembers = shownMembers.where((member) => member.state.toString().toLowerCase().contains(stateF.toLowerCase())).toList();
     }
 
     //Sort
     switch (_sortColumnIndex) {
       case 0:
         if (_sortAscending){
-          shownStudents.sort((a,b) => a.group.toLowerCase().compareTo(b.group.toLowerCase()));
+          shownMembers.sort((a,b) => a.group.toLowerCase().compareTo(b.group.toLowerCase()));
         }
         else{
-          shownStudents.sort((a,b) => b.group.toLowerCase().compareTo(a.group.toLowerCase()));
+          shownMembers.sort((a,b) => b.group.toLowerCase().compareTo(a.group.toLowerCase()));
         }
         break;
       case 1:
         if (_sortAscending){
-          shownStudents.sort((a,b) => a.number.compareTo(b.number));
+          shownMembers.sort((a,b) => a.number.compareTo(b.number));
         }
         else{
-          shownStudents.sort((a,b) => b.number.compareTo(a.number));
+          shownMembers.sort((a,b) => b.number.compareTo(a.number));
         }
         break;
       case 2:
         if (_sortAscending){
-          shownStudents.sort((a,b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+          shownMembers.sort((a,b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
         }
         else{
-          shownStudents.sort((a,b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+          shownMembers.sort((a,b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
         }
         break;
       case 3:
         if (_sortAscending){
-          shownStudents.sort((a,b) => 
+          shownMembers.sort((a,b) => 
             (a.state ?? '').toLowerCase().compareTo((b.state ?? '').toLowerCase()));
         }
         else{
-          shownStudents.sort((a,b) => 
+          shownMembers.sort((a,b) => 
             (b.state ?? '').toLowerCase().compareTo((a.state ?? '').toLowerCase()));
         }
         break;

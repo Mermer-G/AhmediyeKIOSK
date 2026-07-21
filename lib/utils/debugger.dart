@@ -7,6 +7,8 @@ const _storageKey = 'app_debug_logs';
 const _maxStoredLogs = 500;
 
 enum LogLevel { info, warning, error }
+final List<OverlayEntry> _overlays = [];
+
 
 class LogEntry {
   final String timestamp;
@@ -34,6 +36,9 @@ class LogEntry {
 class AppLogger {
   AppLogger._privateConstructor();
   static final AppLogger instance = AppLogger._privateConstructor();
+
+  static GlobalKey<NavigatorState>? navigatorKey;
+  OverlayEntry? _overlayEntry;
 
   final List<LogEntry> _logs = [];
   List<LogEntry> get logs => List.unmodifiable(_logs);
@@ -92,6 +97,69 @@ class AppLogger {
     } catch (e) {
       // ignore
     }
+  }
+
+  void showOverlay(String message, LogLevel level) {
+    final overlay = navigatorKey?.currentState?.overlay;
+    if (overlay == null) return;
+
+    Color color;
+
+    switch (level) {
+      case LogLevel.error:
+        color = Colors.red;
+        break;
+      case LogLevel.warning:
+        color = Colors.orange;
+        break;
+      case LogLevel.info:
+        color = Colors.blue;
+        break;
+    }
+
+    late OverlayEntry entry;
+
+    entry = OverlayEntry(
+      builder: (context) {
+        final index = _overlays.indexOf(entry);
+
+        return Positioned(
+          bottom: 100 + (index * 60),
+          left: 20,
+          right: 20,
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.9),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                message,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    
+    _overlays.add(entry);
+    overlay.insert(entry);
+
+    Future.delayed(const Duration(seconds: 3), () {
+      entry.remove();
+      _overlays.remove(entry);
+
+      // rebuild all remaining overlays
+      for (final e in _overlays) {
+        e.markNeedsBuild();
+      }
+    });
   }
 }
 

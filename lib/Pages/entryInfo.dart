@@ -18,7 +18,7 @@ class EntryInfoPage extends StatefulWidget {
 }
 
 class _EntryInfoPageState extends State<EntryInfoPage> {
-  late Student st;
+  late Member st;
   late Entry ent;
 
   void initializeFields(){
@@ -27,12 +27,12 @@ class _EntryInfoPageState extends State<EntryInfoPage> {
     setState(() {
       //If possible get the lastPushID (this will come from lister page)
       //If not skip below 
-      final raw = _dbService.readFromHive(path: "${ent.group}_${ent.number}", b: Hive.box(studentBox)); 
+      final raw = _dbService.readFromHive(path: "${ent.group}_${ent.number}", b: Hive.box(memberBox)); 
       if (raw == null){
-        AppLogger.instance.error("There is no student for this entry data!");
-        throw Exception("There is no student for this entry data!");
+        AppLogger.instance.error("There is no member for this entry data!");
+        throw Exception("There is no member for this entry data!");
       }
-      st = Student.fromMap(raw);
+      st = Member.fromMap(raw);
     });
   }
 

@@ -18,7 +18,7 @@ const String permissionDB = "Permission";
 const String reasonDB = "Reason";
 const String otherReasonDB = "OtherReason";
 
-class Student {
+class Member {
   String name;
   int number;
   String group;
@@ -31,9 +31,9 @@ class Student {
 
 
   
-  Student({
-  ///This only used to create a student think it as "new" in C#
-  ///This returns a student with given values
+  Member({
+  ///This only used to create a member think it as "new" in C#
+  ///This returns a member with given values
   ///This one is a normal constructor 
     required this.name, 
     required this.number, 
@@ -44,21 +44,21 @@ class Student {
     required this.entryID
   });
   ///This one is a factory constructor.
-  ///factory gives it the ability to return any student
+  ///factory gives it the ability to return any member
   ///
-  factory Student.fromMap(Map<String, dynamic> studentValues){
-    return Student(
-      name: studentValues[nameDB], 
-      number: parseInt(studentValues[numberDB]) ?? -1, 
-      group: studentValues[groupDB], 
-      phone: studentValues[phoneDB],
-      dorm: studentValues[dormDB],
-      supervisor: studentValues[supervisorDB],
-      entryID: parseInt(studentValues[entryIDDB])
+  factory Member.fromMap(Map<String, dynamic> memberValues){
+    return Member(
+      name: memberValues[nameDB], 
+      number: parseInt(memberValues[numberDB]) ?? -1, 
+      group: memberValues[groupDB], 
+      phone: memberValues[phoneDB],
+      dorm: memberValues[dormDB],
+      supervisor: memberValues[supervisorDB],
+      entryID: parseInt(memberValues[entryIDDB])
     );
   }
 
-  static Map<String, dynamic> toMap(Student st){
+  static Map<String, dynamic> toMap(Member st){
     return {
       nameDB: st.name,
       numberDB: parseInt(st.number),
@@ -182,42 +182,42 @@ class Entry {
 
 }
 
-enum StudentStateEnum {
+enum MemberStateEnum {
   inside,
   outside,
 }
 
-class StudentState {
+class MemberState {
   String group;
   int number;
-  StudentStateEnum state;
+  MemberStateEnum state;
   int? lastEntryID;
 
-  StudentState({
+  MemberState({
     required this.group,
     required this.number,
     required this.state,
     required this.lastEntryID
   });
 
-  factory StudentState.fromMap(Map<String, dynamic> stateValues){
-    return StudentState(
+  factory MemberState.fromMap(Map<String, dynamic> stateValues){
+    return MemberState(
       group: stateValues[groupDB], 
       number: parseInt(stateValues[numberDB]) ?? -1,
       state: () {
         try {
-          return StudentStateEnum.values.byName(
+          return MemberStateEnum.values.byName(
             stateValues[stateDB].toString(),
           );
         } catch (_) {
-          return StudentStateEnum.inside;
+          return MemberStateEnum.inside;
         }
       }(),
       lastEntryID: stateValues[entryIDDB]
     );
   }
 
-  static Map<String, dynamic> toMap(StudentState state){
+  static Map<String, dynamic> toMap(MemberState state){
     return {
       groupDB: state.group,
       numberDB: parseInt(state.number),

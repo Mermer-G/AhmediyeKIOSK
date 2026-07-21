@@ -19,7 +19,7 @@ class SettingsPage extends StatefulWidget {
 int entryPullLimit = 300;
 
 class SettingsPageState extends State<SettingsPage> {
-  Map<String, Student> studentMap = {};
+  Map<String, Member> memberMap = {};
 
   // ─── Aksiyonlar buraya eklenir ───────────────────────────────────────────
 
@@ -37,10 +37,18 @@ class SettingsPageState extends State<SettingsPage> {
     _SettingsAction(
       section: 'Bozuk Verileri Göster',
       description: 'Hive\'daki outside öğrencilerin Firebase entry kayıtlarını doğrular.',
-      label: 'Outside öğrencilerin entry kayıtlarını doğrula',
+      label: 'Outside öğrencilerin entry kayıtlarını doğrula.',
       icon: Icons.verified_user,
       color: Colors.blue,
       onConfirm: _verifyOutsideEntries,
+    ),
+    _SettingsAction(
+      section: 'Bütün Üyeleri Pushla',
+      description: 'Hive\'da mevcut bulunan üyeleri RTDB\'ye pushlar. (HAZIR DEĞİL!!!!!!)',
+      label: 'HAZIR DEĞİL!!!!',
+      icon: Icons.verified_user,
+      color: Colors.blue,
+      onConfirm: _testFirebase,
     ),
     // Buraya yeni aksiyon ekle:
     // _SettingsAction(
@@ -63,7 +71,7 @@ class SettingsPageState extends State<SettingsPage> {
         databaseURL: 'https://ahmediye-kiosk-default-rtdb.europe-west1.firebasedatabase.app',
       );
       AppLogger.instance.log("📡 DB URL: ${db.databaseURL}");
-      final snapshot = await db.ref('Student').get().timeout(const Duration(seconds: 5));
+      final snapshot = await db.ref('Member').get().timeout(const Duration(seconds: 5));
       AppLogger.instance.log("✅ Snapshot: exists=${snapshot.exists}");
     } catch (e) {
       AppLogger.instance.log("❌ Test hatası: $e");
@@ -73,28 +81,28 @@ class SettingsPageState extends State<SettingsPage> {
   Future<void> _verifyOutsideEntries() async {
     final db = DatabaseService();
 
-    // Hive'dan student ve state'leri çek
-    final studentRaw = db.readBoxFromHive(b: Hive.box(studentBox));
-    final stateRaw = db.readBoxFromHive(b: Hive.box(studentStateBox));
+    // Hive'dan member ve state'leri çek
+    final memberRaw = db.readBoxFromHive(b: Hive.box(memberBox));
+    final stateRaw = db.readBoxFromHive(b: Hive.box(memberStateBox));
 
-    final students = <String, Student>{};
-    for (final entry in studentRaw.entries) {
-      final s = parseToStudent(entry.value);
-      if (s != null) students[entry.key] = s;
+    final members = <String, Member>{};
+    for (final entry in memberRaw.entries) {
+      final s = parseToMember(entry.value);
+      if (s != null) members[entry.key] = s;
     }
 
-    final states = <String, StudentState>{};
+    final states = <String, MemberState>{};
     for (final entry in stateRaw.entries) {
-      final ss = parseToStudentState(entry.value);
+      final ss = parseToMemberState(entry.value);
       if (ss != null) states[entry.key] = ss;
     }
 
-    AppLogger.instance.log("👥 Toplam öğrenci: ${students.length}");
+    AppLogger.instance.log("👥 Toplam öğrenci: ${members.length}");
     AppLogger.instance.log("📋 Toplam state: ${states.length}");
 
     // Outside olanları filtrele
     final outsideStates = states.entries.where((e) =>
-      e.value.state == StudentStateEnum.outside
+      e.value.state == MemberStateEnum.outside
     ).toList();
 
     AppLogger.instance.log("🚪 Outside olan: ${outsideStates.length}");
@@ -111,9 +119,9 @@ class SettingsPageState extends State<SettingsPage> {
     for (final stateEntry in outsideStates) {
       final key = stateEntry.key;
       final state = stateEntry.value;
-      final student = students[key];
-      final name = student != null
-          ? "${student.name}"
+      final member = members[key];
+      final name = member != null
+          ? "${member.name}"
           : key;
 
       final entryID = state.lastEntryID;
@@ -143,7 +151,7 @@ class SettingsPageState extends State<SettingsPage> {
     // Web'de push listener yok, sadece mobilde
     if (!kIsWeb) {
       Synchronizer().entriesSub.cancel();
-      Synchronizer().studentStateSub.cancel();
+      Synchronizer().memberStateSub.cancel();
     }
 
     // Synchronizer'ı sıfırla ki start() tekrar çalışsın
@@ -151,47 +159,47 @@ class SettingsPageState extends State<SettingsPage> {
     
     final db = DatabaseService();
 
-    List<Student> tempStudents = await _fetchStudentDataFromFirebase(db);
-    for (var s in tempStudents) {
-      studentMap["${s.group}_${s.number}"] = s;
+    List<Member> tempMembers = await _fetchMemberDataFromFirebase(db);
+    for (var s in tempMembers) {
+      memberMap["${s.group}_${s.number}"] = s;
     }
-    tempStudents.clear();
+    tempMembers.clear();
 
-    List<Student> students = [];
-    List<StudentState> studentStates = await _fetchStudentStateDataFromFireBase(db);
+    List<Member> members = [];
+    List<MemberState> memberStates = await _fetchMemberStateDataFromFireBase(db);
 
-    for (var studentState in studentStates) {
-      final key = "${studentState.group}_${studentState.number}";
-      final student = studentMap.remove(key);
-      if (student == null) continue;
-      student.state = studentState.state.name;
-      student.entryID = studentState.lastEntryID;
-      students.add(student);
+    for (var memberState in memberStates) {
+      final key = "${memberState.group}_${memberState.number}";
+      final member = memberMap.remove(key);
+      if (member == null) continue;
+      member.state = memberState.state.name;
+      member.entryID = memberState.lastEntryID;
+      members.add(member);
     }
 
-    studentMap.forEach((k, student) {
-      final newState = StudentState(
-        group: student.group,
-        number: student.number,
-        state: StudentStateEnum.inside,
+    memberMap.forEach((k, member) {
+      final newState = MemberState(
+        group: member.group,
+        number: member.number,
+        state: MemberStateEnum.inside,
         lastEntryID: null,
       );
-      studentStates.add(newState);
-      student.state = newState.state.name;
-      student.entryID = null;
-      students.add(student);
+      memberStates.add(newState);
+      member.state = newState.state.name;
+      member.entryID = null;
+      members.add(member);
     });
 
-    studentMap.clear();
+    memberMap.clear();
 
-    Hive.box(studentBox).clear();
-    for (final s in students) {
-      db.updateHive(path: "${s.group}_${s.number}", data: Student.toMap(s), b: Hive.box(studentBox));
+    Hive.box(memberBox).clear();
+    for (final s in members) {
+      db.updateHive(path: "${s.group}_${s.number}", data: Member.toMap(s), b: Hive.box(memberBox));
     }
 
-    Hive.box(studentStateBox).clear();
-    for (final ss in studentStates) {
-      db.updateHive(path: "${ss.group}_${ss.number}", data: StudentState.toMap(ss), b: Hive.box(studentStateBox));
+    Hive.box(memberStateBox).clear();
+    for (final ss in memberStates) {
+      db.updateHive(path: "${ss.group}_${ss.number}", data: MemberState.toMap(ss), b: Hive.box(memberStateBox));
     }
 
     List<Entry> entries = await _fetchEntryDataFromFirebase(db);
@@ -201,6 +209,10 @@ class SettingsPageState extends State<SettingsPage> {
     }
 
     await Synchronizer().start();
+  }
+
+  Future<void> _pushMembersToDB() async{
+
   }
 
   // ─── UI ──────────────────────────────────────────────────────────────────
@@ -289,34 +301,29 @@ class SettingsPageState extends State<SettingsPage> {
 
   // ─── Firebase fetch metodları ─────────────────────────────────────────────
 
-  Future<List<Student>> _fetchStudentDataFromFirebase(DatabaseService db) async {
-    final snapshot = await db.readFromDB(path: 'Student');
-    return parseToStudents(snapshot?.value);
+  Future<List<Member>> _fetchMemberDataFromFirebase(DatabaseService db) async {
+    final snapshot = await db.readFromDB(path: 'Member');
+    return parseToMembers(snapshot?.value);
   }
 
-  // Future<List<Entry>> _fetchEntryDataFromFirebase(DatabaseService db) async {
-  //   final snapshot = await db.readFromDB(path: 'Entry');
-  //   return parseToEntries(snapshot?.value);
-  // }
-
   Future<List<Entry>> _fetchEntryDataFromFirebase(DatabaseService db) async {
-  final app = Firebase.app(fireBaseAppName);
+    final app = Firebase.app(fireBaseAppName);
 
-  final ref = FirebaseDatabase.instanceFor(
-    app: app,
-    databaseURL: app.options.databaseURL!,
-  )
-  .ref('Entry')
-  .orderByChild(entryIDDB)
-  .limitToLast(300);
+    final ref = FirebaseDatabase.instanceFor(
+      app: app,
+      databaseURL: app.options.databaseURL!,
+    )
+    .ref('Entry')
+    .orderByChild(entryIDDB)
+    .limitToLast(300);
     final snapshot = await ref.get();
 
     return parseToEntries(snapshot.value);
   }
 
-  Future<List<StudentState>> _fetchStudentStateDataFromFireBase(DatabaseService db) async {
-    final snapshot = await db.readFromDB(path: 'StudentState');
-    return parseToStudentStates(snapshot?.value);
+  Future<List<MemberState>> _fetchMemberStateDataFromFireBase(DatabaseService db) async {
+    final snapshot = await db.readFromDB(path: 'MemberState');
+    return parseToMemberStates(snapshot?.value);
   }
 }
 
@@ -398,8 +405,8 @@ class _SettingsSection extends StatelessWidget {
 
 // ─── Parse yardımcıları (settings.dart'ta kalabilir) ─────────────────────────
 
-Student? parseToStudent(Object? raw) {
-  if (raw is Map) return Student.fromMap(Map<String, dynamic>.from(raw));
+Member? parseToMember(Object? raw) {
+  if (raw is Map) return Member.fromMap(Map<String, dynamic>.from(raw));
   return null;
 }
 
@@ -408,16 +415,16 @@ Entry? parseToEntry(Object? raw) {
   return null;
 }
 
-StudentState? parseToStudentState(Object? raw) {
-  if (raw is Map) return StudentState.fromMap(Map<String, dynamic>.from(raw));
+MemberState? parseToMemberState(Object? raw) {
+  if (raw is Map) return MemberState.fromMap(Map<String, dynamic>.from(raw));
   return null;
 }
 
-List<Student> parseToStudents(Object? raw) {
+List<Member> parseToMembers(Object? raw) {
   if (raw is! Map) return [];
   return parseToDataType(
     raw.map((k, v) => MapEntry(k.toString(), v)),
-    Student.fromMap,
+    Member.fromMap,
   );
 }
 
@@ -429,11 +436,11 @@ List<Entry> parseToEntries(Object? raw) {
   );
 }
 
-List<StudentState> parseToStudentStates(Object? raw) {
+List<MemberState> parseToMemberStates(Object? raw) {
   if (raw is! Map) return [];
   return parseToDataType(
     raw.map((k, v) => MapEntry(k.toString(), v)),
-    StudentState.fromMap,
+    MemberState.fromMap,
   );
 }
 

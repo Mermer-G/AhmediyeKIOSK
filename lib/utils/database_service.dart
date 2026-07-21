@@ -7,10 +7,13 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
-const String studentBox = "StudentBox";
+const String memberBox = "StudentBox";
 const String entryBox = "EntryBox";
-const String studentStateBox = "StudentStateBox";
-const String metaBox = "StudentStateBox";
+const String memberStateBox = "StudentStateBox";
+const String metaBox = "MetaBox";
+const String queueBox = "QueueBox";
+const String reasonBox = "ReasonBox";
+const String permissionBox = "PermissionBox";
 
 int byteSizeOf(Map<String, dynamic> data) {
   final jsonString = jsonEncode(data);
@@ -19,6 +22,19 @@ int byteSizeOf(Map<String, dynamic> data) {
 
 class DatabaseService {
   late final FirebaseDatabase firebaseDatabase;
+
+    Future<bool> hasInternet() async {
+    try {
+      final snapshot = await firebaseDatabase
+          .ref("ping")
+          .get()
+          .timeout(const Duration(seconds: 3));
+
+      return snapshot.exists;
+    } catch (_) {
+      return false;
+    }
+  }
 
   DatabaseService() {
     try {
@@ -56,6 +72,17 @@ class DatabaseService {
     required String path,
     required Map<String, dynamic> data,
   }) async {
+
+    final online = await hasInternet();
+    AppLogger.instance.log("Connection was: $online");
+
+    if (!online) {
+      AppLogger.instance.error("No Internet!");
+      AppLogger.instance.showOverlay("İşlem tamamlanamadı! İnternet bağlantınızı kontrol ediniz.", LogLevel.error);
+      throw Exception("NO INTERNET");
+      
+    }
+
     final DatabaseReference ref = firebaseDatabase.ref().child(path);
     await ref.update(data);
     ByteAccumulator.addData(data);
@@ -145,89 +172,6 @@ class DatabaseService {
     );
   }
 
-  // ===============================
-  // 🔄 SYNC ENGINE
-  // ===============================
-  // void startAutoSync() {
-  //   if (!_autoSyncEnabled) return;
-
-  //   _syncTimer?.cancel();
-  //   _syncTimer = Timer.periodic(
-  //     const Duration(minutes: 1),
-  //     (_) => syncNow(),
-  //   );
-  // }
-
-  // void stopAutoSync() {
-  //   _syncTimer?.cancel();
-  // }
-
-  // void setAutoSync(bool enabled) {
-  //   _autoSyncEnabled = enabled;
-  //   enabled ? startAutoSync() : stopAutoSync();
-  // }
-
-  // Future<void> syncNow() async {
-  //   print("🔄 Sync başladı");
-  //   await _syncFromFirebaseToHive();
-  //   await _syncFromHiveToFirebase();
-  //   print("✅ Sync tamamlandı");
-  // }
-
-  // ===============================
-  // FIREBASE → HIVE (UPDATE ONLY)
-  // ===============================
-  Future<void> _syncFromFirebaseToHive(Box b) async {
-    //TODO: This should not be hard coded
-    final snapshot = await readFromDB(path: 'STUDENT');
-    if (snapshot == null || snapshot.value == null) return;
-
-    final remoteData =
-        Map<String, dynamic>.from(snapshot.value as Map);
-
-    for (final entry in remoteData.entries) {
-      final key = entry.key;
-      final remoteValue = Map<String, dynamic>.from(entry.value);
-
-      final localKey = 'STUDENT/$key';
-      final localValue = b.get(localKey);
-
-      if (localValue != null) {
-        final updated = Map<String, dynamic>.from(localValue)
-          ..addAll(remoteValue);
-
-        await b.put(localKey, updated);
-      }
-    }
-  }
-
-  // ===============================
-  // HIVE → FIREBASE
-  // ===============================
-  Future<void> _syncFromHiveToFirebase( Box b) async {
-    final hiveData = b.toMap();
-
-    for (final entry in hiveData.entries) {
-      final key = entry.key;
-      if (key is! String) continue;
-      if (!key.startsWith('STUDENT/')) continue;
-
-      final value = Map<String, dynamic>.from(entry.value);
-
-      await firebaseDatabase
-          .ref(key)
-          .update(toStringMap(value));
-    }
-  }
-
-  Map<String, String>? mapDynamicToString(Map<String, dynamic>? data) {
-  return data?.map(
-    (key, value) => MapEntry(
-      key,
-      value == null ? '' : value.toString(),
-    ),
-  );
-}
 }
 
 String formatTimeString(String? t) {

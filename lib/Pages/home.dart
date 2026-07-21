@@ -1,18 +1,23 @@
+import 'package:app1/Pages/addMemberPage.dart';
 import 'package:app1/Pages/entryList.dart';
 import 'package:app1/Pages/passwordPage.dart';
-import 'package:app1/Pages/studentInfo.dart';
+import 'package:app1/Pages/permissionPage.dart';
+import 'package:app1/Pages/reasonsPage.dart';
+import 'package:app1/Pages/memerInfo.dart';
 import 'package:app1/utils/database_models.dart';
 import 'package:app1/utils/database_service.dart';
 import 'package:app1/utils/debugger.dart';
+import 'package:app1/utils/offline_queue.dart';
 import 'package:app1/utils/synchronizer.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/adapters.dart';
-import 'studentList.dart';
+import 'memberList.dart';
+import 'package:app1/Pages/queuePage.dart';
 import 'dart:async';
 
 String settingsPassword = "365";
 int lastTimeStamp = 0;
-ValueNotifier studentsValueListener = ValueNotifier<List<Student>>([]);
+ValueNotifier membersValueListener = ValueNotifier<List<Member>>([]);
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -26,9 +31,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   String _currentTime = "0";
   Timer? _timer;
-  int outA = 0;
-  int outB = 0;
-  late Map<String, Student> studentMap = {};
+  Map<String, int> groupAndOutside = {};
+  late Map<String, Member> memberMap = {};
   
 
   @override
@@ -36,83 +40,6 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _initialize();
   }
-
-  // Future<void> _initialize() async {
-  //   print("🔥 INIT START");
-
-  //   print("🔥 BEFORE HIVE");
-  //   lastTimeStamp = Hive.box(metaBox).get("lastEntryTimestamp") ?? 0;
-
-  //   print("🔥 BEFORE TIMER");
-  //   _updateTime();
-  //   _timer = Timer.periodic(
-  //     const Duration(seconds: 1),
-  //     (_) => _updateTime(),
-  //   );
-
-  //   print("🔥 BEFORE SYNC");
-  //   await Synchronizer().start();
-
-  //   print("🔥 AFTER SYNC");
-
-  //   print("🔥 BEFORE STUDENTS");
-  //   await _fetchStudentDataFromHive();
-
-  //   print("🔥 BEFORE STATES");
-  //   await _fetchStudentStateDataFromHive();
-
-  //   print("🔥 MERGE");
-  //   mergeStudentData();
-
-  //   print("🔥 INIT DONE");
-  // }
-
-  
-  // @override
-  // Widget build(BuildContext context) {
-  //   return LayoutBuilder(
-  //     builder: (context, constraints) {
-  //       final bool isWide = constraints.maxWidth > 700;
-
-  //       return Scaffold(
-  //         appBar: appBarM(),
-
-  //         // 📱 DAR EKRAN → DRAWER VAR
-  //         drawer: isWide
-  //             ? null
-  //             : Drawer(
-  //                 width: 150,
-  //                 child: SafeArea(
-  //                   child: Column(
-  //                     children: [
-  //                       SizedBox(height: 20),
-  //                       menuButtons(context, isWide),
-  //                     ],
-  //                   ),
-  //                 ),
-  //               ),
-
-  //         body: Padding(
-  //           padding: const EdgeInsets.all(20),
-  //           child: isWide
-  //               ? Row(
-  //                   children: [
-  //                     Expanded(
-  //                       child: Align(
-  //                         alignment: Alignment.topCenter,
-  //                         child: menuButtons(context, isWide),
-  //                       ),
-  //                     ),
-  //                     Expanded(child: notificationsArea()),
-  //                   ],
-  //                 )
-  //               : Center(child: notificationsArea()), // 📱 Telefonda sadece içerik
-  //         ),
-  //       );
-  //     },
-  //   );
-  // }
-
   
   final List<String> logs = []; // Logların tutulduğu liste
 
@@ -142,20 +69,20 @@ class _HomePageState extends State<HomePage> {
       AppLogger.instance.log("AFTER SYNC: Senkronizasyon başarılı.");
 
       // 4. VERİ ÇEKME
-      AppLogger.instance.log("BEFORE STUDENTS: Hive'dan öğrenci verileri...");
-      await _fetchStudentDataFromHive();
-      AppLogger.instance.log("STUDENTS DATA FETCHED");
+      AppLogger.instance.log("BEFORE MEMBERS: Hive'dan öğrenci verileri...");
+      await _fetchMemberDataFromHive();
+      AppLogger.instance.log("MEMBERS DATA FETCHED");
 
       AppLogger.instance.log("BEFORE STATES: Durum verileri çekiliyor...");
-      await _fetchStudentStateDataFromHive();
+      await _fetchMemberStateDataFromHive();
       AppLogger.instance.log("STATES DATA FETCHED");
 
       // 5. MERGE
       AppLogger.instance.log("MERGE: Veriler birleştiriliyor...");
-      mergeStudentData();
+      mergeMemberData();
       AppLogger.instance.log("MERGE DONE");
 
-      
+      QueueHelper().syncQueue();
 
       AppLogger.instance.log("ALL INIT DONE - Uygulama hazır. \n \n \n");
 
@@ -212,18 +139,18 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  //this will change into both student and studentState or maybe 2 methods
-  Future<void> _fetchStudentDataFromHive() async{
+  //this will change into both member and memberState or maybe 2 methods
+  Future<void> _fetchMemberDataFromHive() async{
     try {
-      AppLogger.instance.log('===== VERİ ÇEKME BAŞLADI: Student =====');
-      final rawMap = Hive.box(studentBox).toMap();
+      AppLogger.instance.log('===== VERİ ÇEKME BAŞLADI: Member =====');
+      final rawMap = Hive.box(memberBox).toMap();
       
       rawMap.forEach((k,v){
         Map<String, dynamic> valuesMap = Map<String, dynamic>.from(v as Map);
-        final student = Student.fromMap(valuesMap);
-        studentMap["${student.group}_${student.number}"] = student;
+        final member = Member.fromMap(valuesMap);
+        memberMap["${member.group}_${member.number}"] = member;
 
-        AppLogger.instance.log("Added student for: ${student.group}_${student.number}");
+        AppLogger.instance.log("Added member for: ${member.group}_${member.number}");
       });
     } 
       
@@ -233,27 +160,27 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _fetchStudentStateDataFromHive() async{
+  Future<void> _fetchMemberStateDataFromHive() async{
     try {
-      AppLogger.instance.log('===== VERİ ÇEKME BAŞLADI: StudentState =====');
-      final rawMap = Hive.box(studentStateBox).toMap();
+      AppLogger.instance.log('===== VERİ ÇEKME BAŞLADI: MemberState =====');
+      final rawMap = Hive.box(memberStateBox).toMap();
       
       AppLogger.instance.log("Rawmap has: ${rawMap.length} elements");
 
       rawMap.forEach((k,v){
         Map<String, dynamic> valuesMap = Map<String, dynamic>.from(v as Map);
-        final state = StudentState.fromMap(valuesMap);
+        final state = MemberState.fromMap(valuesMap);
 
         final key = "${state.group}_${state.number}";
 
-        if (studentMap.containsKey(key)) {
-          studentMap[key]!.state = state.state.name;
-          studentMap[key]!.entryID = state.lastEntryID;
+        if (memberMap.containsKey(key)) {
+          memberMap[key]!.state = state.state.name;
+          memberMap[key]!.entryID = state.lastEntryID;
         } else {
-          AppLogger.instance.error("⚠ STATE GELDİ AMA STUDENT YOK: $key");
+          AppLogger.instance.error("⚠ STATE GELDİ AMA MEMBER YOK: $key");
         }
         
-        AppLogger.instance.log("Added student state for ${state.group}_${state.number} State: ${state.state}, entry id: ${state.lastEntryID}");
+        AppLogger.instance.log("Added member state for ${state.group}_${state.number} State: ${state.state}, entry id: ${state.lastEntryID}");
       });
     } 
       
@@ -263,11 +190,11 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void mergeStudentData(){
-    studentMap.forEach((key, student) {
-      student.state ??= StudentStateEnum.inside.name;
+  void mergeMemberData(){
+    memberMap.forEach((key, member) {
+      member.state ??= MemberStateEnum.inside.name;
     });
-    studentsValueListener.value = studentMap.values.toList();
+    membersValueListener.value = memberMap.values.toList();
   }
 
   void _updateTime() {
@@ -279,17 +206,27 @@ class _HomePageState extends State<HomePage> {
           "${now.hour.toString().padLeft(2, '0')}:"
           "${now.minute.toString().padLeft(2, '0')}:"
           "${now.second.toString().padLeft(2, '0')}";
-      
-      outA = countOutsideByGroup(studentsValueListener.value, "A");
-      outB = countOutsideByGroup(studentsValueListener.value, "B");
     });
   }
 
-  int countOutsideByGroup(List<Student> students, String group) {
-    return students.where((st) =>
-        st.group.toLowerCase() == group.toLowerCase() &&
-        (st.state ?? "").toLowerCase() == STATEOUT.toLowerCase()
-    ).length;
+  void countOutsideByGroup(List<Member> members) {
+    groupAndOutside.clear();
+    for (var i = 0; i < members.length; i++) {
+      //First time adding to the map.
+      if (!groupAndOutside.containsKey(members[i].group)){
+        groupAndOutside[members[i].group] = members[i].state == STATEOUT.toLowerCase() ? 1 : 0; 
+      }
+
+      else{
+        groupAndOutside[members[i].group] = members[i].state == STATEIN.toLowerCase() 
+        ? 
+        groupAndOutside[members[i].group]! //Buraya hiç gelmiyor 
+        : 
+        groupAndOutside[members[i].group]! + 1;  //Buraya hep geliyor.
+        //102 öğrencinin hepsi de alt satıra giriyor. Üst satıra giren 3 öğrenci olmalıydı.
+      }
+      
+    }
   }
 
   @override
@@ -325,7 +262,7 @@ class _HomePageState extends State<HomePage> {
             AppLogger.instance.log("Talebe Listesi'ne tıklandı.");
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => StudentListerPage(students: studentsValueListener.value, sortColumnIndex: 1, sortAscending: true, groupFilter: ""),),
+              MaterialPageRoute(builder: (_) => MemberListerPage(members: membersValueListener.value, sortColumnIndex: 1, sortAscending: true, groupFilter: ""),),
             );
           }
         ),
@@ -353,10 +290,23 @@ class _HomePageState extends State<HomePage> {
             );
           }
         ),
+        const SizedBox(height: 12),
+        _menuButton(
+          icon: Icons.settings,
+          text: "Ayarlar",
+          onTap: () {
+            AppLogger.instance.log("Ayarlar'a tıklandı.");
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => AddMemberPage()),
+            );
+          }
+        ),
       ],
     ) : 
-    Row(
-      mainAxisSize: MainAxisSize.min,
+    Wrap(
+      spacing: 12,
+      runSpacing: 12,
       children: [
         _menuButton(
           icon: Icons.list_alt_rounded,
@@ -365,11 +315,11 @@ class _HomePageState extends State<HomePage> {
             AppLogger.instance.log("Talebe Listesi'ne tıklandı.");
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => StudentListerPage(students: studentsValueListener.value, sortColumnIndex: 1, sortAscending: true, groupFilter: ""),),
+              MaterialPageRoute(builder: (_) => MemberListerPage(members: membersValueListener.value, sortColumnIndex: 1, sortAscending: true, groupFilter: ""),),
             );
           }
         ),
-        const SizedBox(width: 12),
+        
         _menuButton(
           icon: Icons.list_alt_rounded,
           text: "Giriş-Çıkış Listesi",
@@ -381,7 +331,7 @@ class _HomePageState extends State<HomePage> {
             );
           }
         ),
-        const SizedBox(width: 12),
+        
         _menuButton(
           icon: Icons.settings,
           text: "Ayarlar",
@@ -390,6 +340,55 @@ class _HomePageState extends State<HomePage> {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => PasswordPage()),
+            );
+          }
+        ),
+        
+        _menuButton(
+        icon: Icons.sync,
+        text: "Sync Queue",
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const QueuePage(),
+            ),
+          );
+        },
+      ),
+      
+        _menuButton(
+          icon: Icons.person,
+          text: "Üye ekle",
+          onTap: () {
+            AppLogger.instance.log("Üye ekleye tıklandı.");
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => AddMemberPage()),
+            );
+          }
+        ),
+        
+        _menuButton(
+          icon: Icons.rule,
+          text: "Sebepler",
+          onTap: () {
+            AppLogger.instance.log("Sebepler menüsüne tıklandı.");
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => ReasonPage()),
+            );
+          }
+        ),
+
+        _menuButton(
+          icon: Icons.check_box,
+          text: "İzinler",
+          onTap: () {
+            AppLogger.instance.log("İzinler menüsüne tıklandı.");
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => PermissionPage()),
             );
           }
         ),
@@ -450,7 +449,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         const SizedBox(height: 16),
-        buildOutsideButtons(context, studentsValueListener.value),
+        buildOutsideButtons(context, membersValueListener.value),
         const SizedBox(height: 16),
         const Row(
           mainAxisSize: MainAxisSize.min,
@@ -464,7 +463,15 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget buildOutsideButtons(BuildContext context, List<Student> students) {
+  //Bu method dinamik olacak. Yapacakları:
+  //Grupları oku ve kaç grup olduğunu bul.
+  //Bu gruplardan kaç kişinin dışarıda olduğunu bul.
+  //Bu bilgileri birer buton oluştur ve göster.
+  //Butona tıklayınca sorted ve filtered bir şekilde listeyi aç.
+  Widget buildOutsideButtons(BuildContext context, List<Member> members) {
+    countOutsideByGroup(members);
+
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
@@ -473,26 +480,20 @@ class _HomePageState extends State<HomePage> {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: _groupButton(
-              context: context,
-              group: "A",
-              count: outA,
-              students: students,
-              sortIndex: 3
+        for (final entry in groupAndOutside.entries)
+          ...[
+            Expanded(
+              child: _groupButton(
+                context: context,
+                group: entry.key,
+                count: entry.value,
+                members: members,
+                sortIndex: 3,
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _groupButton(
-              context: context,
-              group: "B",
-              count: outB,
-              students: students,
-              sortIndex: 3
-            ),
-          ),
-        ],
+            const SizedBox(width: 12),
+          ],
+      ],
       ),
     );
   }
@@ -502,29 +503,29 @@ class _HomePageState extends State<HomePage> {
     required String group,
     required int count,
     required int sortIndex,
-    required List<Student> students,
+    required List<Member> members,
   }) {
-    final hasStudents = count > 0;
+    final hasMembers = count > 0;
 
     return ElevatedButton(
-      onPressed: hasStudents
+      onPressed: hasMembers
           ? () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => StudentListerPage(students: students, sortColumnIndex: sortIndex, sortAscending: false, groupFilter: group),
+                  builder: (_) => MemberListerPage(members: members, sortColumnIndex: sortIndex, sortAscending: false, groupFilter: group),
                 ),
               );
             }
           : null, // ✅ pasif
       style: ElevatedButton.styleFrom(
-        backgroundColor: hasStudents ? const Color.fromARGB(255, 177, 120, 116) : Colors.grey,
+        backgroundColor: hasMembers ? const Color.fromARGB(255, 177, 120, 116) : Colors.grey,
         padding: const EdgeInsets.symmetric(vertical: 10),
       ),
       child: Text(
-        hasStudents
+        hasMembers
             ? "$group • $count kişi"
-            : "$group grubunda dışarıda öğrenci yok",
+            : "$group grubunda dışarıda kimse yok",
         textAlign: TextAlign.center,
       ),
     );

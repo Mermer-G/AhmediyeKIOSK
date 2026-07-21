@@ -1,5 +1,7 @@
 import 'package:app1/Pages/entryInfo.dart';
 import 'package:app1/Pages/home.dart';
+import 'package:app1/Pages/permissionPage.dart';
+import 'package:app1/Pages/reasonsPage.dart';
 import 'package:app1/Pages/settings.dart';
 import 'package:app1/utils/database_models.dart';
 import 'package:app1/utils/debugger.dart';
@@ -7,30 +9,40 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../utils/database_service.dart';
-import '../utils/cache_revert_button.dart';
 
-class StudentInfoPage extends StatefulWidget {
+class MemberInfoPage extends StatefulWidget {
   final String? pushID; //for reading entry 
-  final Student student; //for showing data
+  final Member member; //for showing data
 
-  const StudentInfoPage({
+  const MemberInfoPage({
     super.key,
     required this.pushID,
-    required this.student,
+    required this.member,
   });
 
   @override
-  State<StudentInfoPage> createState() => _StudentInfoPageState();
+  State<MemberInfoPage> createState() => _MemberInfoPageState();
+}
+
+bool isTimeInRange(
+    TimeOfDay now,
+    TimeOfDay start,
+    TimeOfDay end,
+) {
+  final nowMinutes = now.hour * 60 + now.minute;
+  final startMinutes = start.hour * 60 + start.minute;
+  final endMinutes = end.hour * 60 + end.minute;
+
+  return nowMinutes >= startMinutes &&
+      nowMinutes <= endMinutes;
 }
 
 const STATEIN = "Inside";
 const STATEOUT = "Outside";
 
-
-
-class _StudentInfoPageState extends State<StudentInfoPage> {
+class _MemberInfoPageState extends State<MemberInfoPage> {
   final _dbService = DatabaseService();
-  late Student st;
+  late Member st;
   Entry? entry;
 
 
@@ -42,23 +54,22 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
   void initState() {
     super.initState();
     initializeFields();
-    
   }
 
   void initializeFields(){
-    st = widget.student;
+    st = widget.member;
     DatabaseService _dbService = DatabaseService();
     setState(() {
       //If possible get the lastPushID (this will come from lister page)
       //If not skip below
       if(st.entryID == null){
-        AppLogger.instance.warn("Student has no entry ID");
+        AppLogger.instance.warn("Member has no entry ID");
         return;
       } 
-      AppLogger.instance.warn("Student has state: ${st.state}");
+      AppLogger.instance.warn("Member has state: ${st.state}");
       final entryMap = _dbService.readFromHive(path: st.entryID!.toString(), b: Hive.box(entryBox)); 
       if(entryMap == null){
-        AppLogger.instance.warn("Student entry was null");
+        AppLogger.instance.warn("Member entry was null");
         return;
       }
       AppLogger.instance.warn("Entry ID:${st.entryID}");
@@ -101,9 +112,6 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
               _contactButtons(),
             ],
           ),
-
-          /// 🔴 Floating cache kontrolü
-          const CacheRevertButton(),
         ],
       ),
     );
@@ -151,50 +159,22 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
 
   //────────────────────────────────
   // Entry window
-  Future<bool> showEntry(BuildContext context, Student student) async {
-    final List<String> reasons = [
-      "Hastane",
-      "Hizmet",
-      "Sohbet",
-      "Market",
-      "Terzi",
-      "Teravih",
-      "Mukabele",
-      "İftar",
-      "Staj",
-      "Dişçi",
-      "ATM",
-      "Eczane",
-      "Okul",
-      "Gecelik İzin",
-      "Şehir Dışı",
-      "Diğer...",
-    ];
+  Future<bool> showEntry(BuildContext context, Member member) async {
+    final List<Reason> reasons = getReasons(reasonBox); 
+    final newReason = Reason();
+    newReason.name = "Diğer...";
+    newReason.days = [1,2,3,4,5,6,7];
+    reasons.add(newReason);
 
-    // Eğer bugün pazar ise ekle
-    if (DateTime.now().weekday == DateTime.sunday) {
-      reasons.insert(0, "Pazar İzni"); 
-    }
+    final now = TimeOfDay.now();
+    final currentDay = DateTime.now().weekday; // 1-7
 
-    final List<String> permisions = [
-      "Ruçhan Emre Aksay",
-      "Eren Kahraman",
-      "Ahmet Hamza Boyacıoğlu",
-      "İsmet Enes Tandoğaç",
-      "Salih Çakır",
-      "Ahmet Faruk Elemen",
-      "Meiirbek Bakhtyiar",
-      "Doğukan Işık",
-    ];
-
-    // Eğer bugün pazar ise ekle
-    if (DateTime.now().weekday == DateTime.sunday) {
-      permisions.insert(0, "Pazar İzni"); 
-    }
+    
+    final List<Permission> permisions = getPermissions(permissionBox); 
 
     final otherReason = TextEditingController();
-    String? selectedReason = reasons.contains(HomePage.reason) ? HomePage.reason : null;
-    String? selectedPermission = permisions.contains(HomePage.permission) ? HomePage.permission : null;
+    String? selectedReason = reasons.any((r) => r.name == HomePage.reason) ? HomePage.reason : null;
+    String? selectedPermission = permisions.any((r) => r.name == HomePage.permission) ? HomePage.permission : null;
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -233,12 +213,30 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
                         value: selectedReason,
                         hint: const Text("Sebep seçiniz."),
                         isExpanded: true,
-                        items: reasons.map((item) {
-                            return DropdownMenuItem<String>(
-                              value: item,
-                              child: Text(item),
-                            );
-                          }).toList(),
+                        items: reasons
+                              .where((reason) {
+
+                                // Gün kontrolü
+                                if (!reason.days.contains(currentDay)) {
+                                  return false;
+                                }
+
+                                // Saat kontrolü
+                                if(reason.startTime != null && reason.endTime != null){
+                                  final start = stringToTimeOfDay(reason.startTime!);
+                                  final end = stringToTimeOfDay(reason.endTime!);
+                                  return isTimeInRange(now, start, end);
+                                }
+                                
+                                return true;
+                              })
+                              .map((reason) {
+                                return DropdownMenuItem<String>(
+                                  value: reason.name,
+                                  child: Text(reason.name),
+                                );
+                              })
+                              .toList(),
                         onChanged: (value) {
                           setState(() {
                             HomePage.reason = value;
@@ -257,8 +255,8 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
                         isExpanded: true,
                         items: permisions
                             .map((item) => DropdownMenuItem(
-                              value: item, 
-                              child: Text(item)
+                              value: item.name, 
+                              child: Text(item.name)
                               ))
                             .toList(),
                         onChanged: (value) {
@@ -323,11 +321,11 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
                               //Entry datası oluşturulur. 
                               final entryID = _dbService.createPushID(); 
 
-                              Entry entry = Entry( 
+                              entry = Entry( 
                                 entryID: entryID, 
-                                group: student.group, 
-                                number: student.number, 
-                                name: student.name,
+                                group: member.group, 
+                                number: member.number, 
+                                name: member.name,
                                 operator: "Entegre edilmedi!",
                                 exitTime: DateTime.now().toString(), 
                                 entryTime: null, 
@@ -339,27 +337,27 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
                               //Entry Hive'a pushlanır. 
                               await _dbService.putToHive(
                                 pushID: entryID.toString(), 
-                                data: Entry.toMap(entry), 
+                                data: Entry.toMap(entry!), 
                                 b: Hive.box(entryBox)
                               ); 
                               
                               setState(() { 
-                                student.entryID = entryID; 
-                                student.state = STATEOUT; 
-                                widget.student.entryID = entryID;
+                                member.entryID = entryID; 
+                                member.state = STATEOUT; 
+                                widget.member.entryID = entryID;
                               }); 
 
-                              StudentState studentState = StudentState(
-                                group: student.group, 
-                                number: student.number, 
-                                state: StudentStateEnum.values.byName(student.state!.toLowerCase()), 
+                              MemberState memberState = MemberState(
+                                group: member.group, 
+                                number: member.number, 
+                                state: MemberStateEnum.values.byName(member.state!.toLowerCase()), 
                                 lastEntryID: entryID
                               );
 
-                              //StudentState güncellenecek.
+                              //MemberState güncellenecek.
                               await _dbService.updateHive(
-                                path: "${student.group}_${student.number}", 
-                                data: StudentState.toMap(studentState), b: Hive.box(studentStateBox)
+                                path: "${member.group}_${member.number}", 
+                                data: MemberState.toMap(memberState), b: Hive.box(memberStateBox)
                               ); 
                               Navigator.pop(context, true); // ✅ başarılı
                             },
@@ -482,7 +480,7 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
       AppLogger.instance.error("Entry was null");
       return;
     }
-    AppLogger.instance.log("Student Info'dan --> Entry Info'ya geçildi");
+    AppLogger.instance.log("Member Info'dan --> Entry Info'ya geçildi");
     await Navigator.push(context, MaterialPageRoute(builder: (context) => EntryInfoPage(entry: entry))); // yeni info page gelecek buraya.
   }
 
@@ -490,23 +488,22 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
     if (st.state!.toLowerCase() == STATEOUT.toLowerCase()) {
       // Dışardayken direkt içeri gir
 
-
       setState(() {
         st.state = STATEIN;
         entry!.entryTime = DateTime.now().toString();
-        widget.student.state = st.state;
+        widget.member.state = st.state;
       });
 
       _dbService.updateHive(path: st.entryID!.toString(), data: Entry.toMap(entry!), b: Hive.box(entryBox));
 
-      StudentState studentState = StudentState(
+      MemberState memberState = MemberState(
         group: st.group, 
         number: st.number, 
-        state: StudentStateEnum.values.byName(st.state!.toLowerCase()), 
+        state: MemberStateEnum.values.byName(st.state!.toLowerCase()), 
         lastEntryID: null
       );
 
-      _dbService.updateHive(path: "${st.group}_${st.number}", data: StudentState.toMap(studentState), b: Hive.box(studentStateBox));
+      _dbService.updateHive(path: "${st.group}_${st.number}", data: MemberState.toMap(memberState), b: Hive.box(memberStateBox));
       setState(() {
         st.entryID = null;
       });
@@ -521,12 +518,12 @@ class _StudentInfoPageState extends State<StudentInfoPage> {
 
 
 
-  void readEntryAndReload(Student st){
-    final stud = _dbService.readFromHive(path: "${st.group}_${st.number}" ,b: Hive.box(studentBox));
+  void readEntryAndReload(Member st){
+    final stud = _dbService.readFromHive(path: "${st.group}_${st.number}" ,b: Hive.box(memberBox));
 
-    final realStud = Student.fromMap(stud!);
+    final realStud = Member.fromMap(stud!);
     if (realStud.entryID == null) {
-      AppLogger.instance.warn("Student has no entry ID.");
+      AppLogger.instance.warn("Member has no entry ID.");
       return;
     }
 

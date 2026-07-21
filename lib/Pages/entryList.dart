@@ -1,6 +1,6 @@
 import 'package:app1/Pages/entryInfo.dart';
 import 'package:app1/Pages/settings.dart';
-import 'package:app1/Pages/studentList.dart';
+import 'package:app1/Pages/memberList.dart';
 import 'package:app1/utils/database_models.dart';
 import 'package:app1/utils/database_service.dart';
 import 'package:app1/utils/debugger.dart';
@@ -88,35 +88,11 @@ class _entryListerPageState extends State<entryListerPage> {
     }
   }
 
-  // Future<void> _fetchDataFromFirebase() async {
-  //   try {
-  //     print('===== VERİ ÇEKME BAŞLADI =====');
-  //     final DataSnapshot? snapshot = await _databaseService.readFromDB(path: 'EntryTest');
-  //     final raw = snapshot?.value;
-  //     entries = parseToEntries(raw);
-  //     print("Student count: ${entries.length} ");
-      
-  //     //This is just for testing shown data will be set in somewhere different.
-  //     // convertValuesToListItems();
-  //     setState(() {
-  //       _isLoading = false;
-  //     });
-  //   }
-     
-  //   catch (e) {
-  //     print('HATA: $e');
-  //     setState(() {
-  //       _errorMessage = 'Veri yüklenemedi. Veri tabanından resetlemeyi deneyin.';
-  //       _isLoading = false;
-  //     });
-  //   }
-  // }
-
   List<Entry> parseToEntries(Object? raw){
     List<Entry> returnList = [];
 
     if(raw is Map){
-      //Here keys are nodeKeys(IDs) of students and the values are value blocks A1 : {Dorm:..., Name:...}
+      //Here keys are nodeKeys(IDs) of members and the values are value blocks A1 : {Dorm:..., Name:...}
       Map<String, dynamic> stringMap = raw.map((key,value) => MapEntry(key.toString(), value));
       returnList = parseToDataType(stringMap, Entry.fromMap);
     }
@@ -138,9 +114,9 @@ class _entryListerPageState extends State<entryListerPage> {
     //Rows:
     _rows.clear();
     //For rows we need to create dataCells
-    int numberOfstudents = 0;
+    int numberOfmembers = 0;
     shownEntries.forEach((entry) {
-      numberOfstudents++;
+      numberOfmembers++;
       _rows.add(DataRow(
         onSelectChanged: (selected) async {
           if (selected == true) {
@@ -171,7 +147,7 @@ class _entryListerPageState extends State<entryListerPage> {
       ));
     });
     _isLoading = false;
-    AppLogger.instance.log("Number of students in the table: $numberOfstudents");
+    AppLogger.instance.log("Number of members in the table: $numberOfmembers");
   
   }
 
