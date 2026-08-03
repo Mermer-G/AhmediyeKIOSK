@@ -21,42 +21,56 @@ int entryPullLimit = 300;
 class SettingsPageState extends State<SettingsPage> {
   Map<String, Member> memberMap = {};
 
+  String _searchQuery = '';
+  bool _isRunning = false;
+
   // ─── Aksiyonlar buraya eklenir ───────────────────────────────────────────
+  // Aşağıdaki liste 20 farklı aksiyonu rahatça barındıracak şekilde
+  // tasarlandı. Yeni bir aksiyon eklemek için tek yapman gereken
+  // listeye yeni bir _SettingsAction eklemek; UI otomatik olarak
+  // section'lara göre gruplayıp güzelce render ediyor.
 
   List<_SettingsAction> get _actions => [
     _SettingsAction(
-      section: 'Yerel Verileri Resetle',
-      description: 'Uygulamada tutulan tüm yerel verileri siler ve veri tabanından yeniden çeker.',
+      section: 'Veri Yönetimi',
+      title: 'Yerel Verileri Resetle',
+      description:
+          'Uygulamada tutulan tüm yerel verileri siler ve veri tabanından yeniden çeker.',
       label: 'Mevcut verileri sıfırla ve veri tabanından yeni veri al.',
-      icon: Icons.delete_forever,
+      icon: Icons.delete_forever_rounded,
       color: Colors.red,
       confirmTitle: 'Emin misin?',
-      confirmMessage: 'Local verilerin hepsi silinecek ve veri tabanından tekrardan çekilecek.\nBu işlem geri alınamaz!',
+      confirmMessage:
+          'Local verilerin hepsi silinecek ve veri tabanından tekrardan çekilecek.\nBu işlem geri alınamaz!',
       onConfirm: _resetAndSync,
     ),
     _SettingsAction(
-      section: 'Bozuk Verileri Göster',
-      description: 'Hive\'daki outside öğrencilerin Firebase entry kayıtlarını doğrular.',
-      label: 'Outside öğrencilerin entry kayıtlarını doğrula.',
-      icon: Icons.verified_user,
+      section: 'Veri Yönetimi',
+      title: 'Bozuk Verileri Göster',
+      description: "Hive'daki outside öğrencilerin Firebase entry kayıtlarını doğrular.",
+      label: "Outside öğrencilerin entry kayıtlarını doğrula.",
+      icon: Icons.verified_user_rounded,
       color: Colors.blue,
       onConfirm: _verifyOutsideEntries,
     ),
     _SettingsAction(
-      section: 'Bütün Üyeleri Pushla',
-      description: 'Hive\'da mevcut bulunan üyeleri RTDB\'ye pushlar. (HAZIR DEĞİL!!!!!!)',
-      label: 'HAZIR DEĞİL!!!!',
-      icon: Icons.verified_user,
-      color: Colors.blue,
+      section: 'Senkronizasyon',
+      title: 'Bütün Üyeleri Pushla',
+      description: "Hive'da mevcut bulunan üyeleri RTDB'ye pushlar. (HAZIR DEĞİL)",
+      label: 'Üyeleri veri tabanına gönder.',
+      icon: Icons.cloud_upload_rounded,
+      color: Colors.orange,
+      badge: 'HAZIR DEĞİL',
       onConfirm: _testFirebase,
     ),
-    // Buraya yeni aksiyon ekle:
+    // Buraya yeni aksiyon ekle, ör:
     // _SettingsAction(
     //   section: 'Başka Bölüm',
-    //   description: '...',
-    //   label: '...',
-    //   icon: Icons.refresh,
-    //   color: Colors.blue,
+    //   title: 'Kısa Başlık',
+    //   description: 'Ne yaptığını anlatan açıklama.',
+    //   label: 'Buton üzerindeki metin.',
+    //   icon: Icons.refresh_rounded,
+    //   color: Colors.teal,
     //   onConfirm: _baskaBirMetod,
     // ),
   ];
@@ -156,7 +170,7 @@ class SettingsPageState extends State<SettingsPage> {
 
     // Synchronizer'ı sıfırla ki start() tekrar çalışsın
     Synchronizer().reset();
-    
+
     final db = DatabaseService();
 
     List<Member> tempMembers = await _fetchMemberDataFromFirebase(db);
@@ -211,41 +225,71 @@ class SettingsPageState extends State<SettingsPage> {
     await Synchronizer().start();
   }
 
-  Future<void> _pushMembersToDB() async{
-
-  }
+  Future<void> _pushMembersToDB() async {}
 
   // ─── UI ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    // Aksiyonları section'a göre grupla
+    final query = _searchQuery.trim().toLowerCase();
+    final filtered = query.isEmpty
+        ? _actions
+        : _actions.where((a) {
+            return a.title.toLowerCase().contains(query) ||
+                a.description.toLowerCase().contains(query) ||
+                a.section.toLowerCase().contains(query);
+          }).toList();
+
     final Map<String, List<_SettingsAction>> grouped = {};
-    for (final action in _actions) {
+    for (final action in filtered) {
       grouped.putIfAbsent(action.section, () => []).add(action);
     }
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF4F5F7),
       appBar: AppBar(
         centerTitle: true,
-        elevation: 10.0,
-        title: const Text('Ahmediye K.I.O.S.K', style: TextStyle(color: Colors.white)),
-        backgroundColor: const Color.fromARGB(255, 90, 90, 90),
+        elevation: 0,
+        title: const Text(
+          'Ahmediye K.I.O.S.K',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: const Color(0xFF2E2E33),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
+      body: SafeArea(
         child: Center(
-          child: SizedBox(
-            width: 500,
-            child: ListView(
-              shrinkWrap: true,
-              children: grouped.entries.map((entry) {
-                return _SettingsSection(
-                  title: entry.key,
-                  actions: entry.value,
-                  onAction: (action) => _showConfirmDialog(context, action),
-                );
-              }).toList(),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                  child: _SearchField(
+                    onChanged: (v) => setState(() => _searchQuery = v),
+                  ),
+                ),
+                Expanded(
+                  child: grouped.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'Sonuç bulunamadı.',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        )
+                      : ListView(
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                          children: grouped.entries.map((entry) {
+                            return _SettingsSection(
+                              title: entry.key,
+                              actions: entry.value,
+                              onAction: _isRunning
+                                  ? null
+                                  : (action) => _showConfirmDialog(context, action),
+                            );
+                          }).toList(),
+                        ),
+                ),
+              ],
             ),
           ),
         ),
@@ -262,7 +306,14 @@ class SettingsPageState extends State<SettingsPage> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(action.confirmTitle!),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: action.color),
+            const SizedBox(width: 10),
+            Expanded(child: Text(action.confirmTitle!)),
+          ],
+        ),
         content: Text(action.confirmMessage ?? ''),
         actions: [
           TextButton(
@@ -270,10 +321,13 @@ class SettingsPageState extends State<SettingsPage> {
             child: const Text('İptal'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: action.color),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: action.color,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
             onPressed: () {
-              _runAction(context, action);
               Navigator.pop(context);
+              _runAction(context, action);
             },
             child: const Text('Onayla', style: TextStyle(color: Colors.white)),
           ),
@@ -283,19 +337,32 @@ class SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _runAction(BuildContext context, _SettingsAction action) async {
+    setState(() => _isRunning = true);
     try {
       await action.onConfirm();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${action.label} tamamlandı.')),
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            backgroundColor: Colors.green.shade600,
+            content: Text('${action.label} tamamlandı.'),
+          ),
         );
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            backgroundColor: Colors.red.shade600,
+            content: Text('Hata: $e'),
+          ),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isRunning = false);
     }
   }
 
@@ -331,16 +398,19 @@ class SettingsPageState extends State<SettingsPage> {
 
 class _SettingsAction {
   final String section;
+  final String title;
   final String description;
   final String label;
   final IconData icon;
   final Color color;
   final String? confirmTitle;
   final String? confirmMessage;
+  final String? badge;
   final Future<void> Function() onConfirm;
 
   _SettingsAction({
     required this.section,
+    required this.title,
     required this.description,
     required this.label,
     required this.icon,
@@ -348,13 +418,38 @@ class _SettingsAction {
     required this.onConfirm,
     this.confirmTitle,
     this.confirmMessage,
+    this.badge,
   });
+}
+
+class _SearchField extends StatelessWidget {
+  final ValueChanged<String> onChanged;
+
+  const _SearchField({required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        hintText: 'Aksiyon ara...',
+        prefixIcon: const Icon(Icons.search_rounded),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
 }
 
 class _SettingsSection extends StatelessWidget {
   final String title;
   final List<_SettingsAction> actions;
-  final void Function(_SettingsAction) onAction;
+  final void Function(_SettingsAction)? onAction;
 
   const _SettingsSection({
     required this.title,
@@ -364,37 +459,44 @@ class _SettingsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 4,
-      margin: const EdgeInsets.only(bottom: 20),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            ...actions.map((action) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(action.description, style: const TextStyle(color: Colors.grey)),
-                  const SizedBox(height: 8),
-                  ElevatedButton.icon(
-                    onPressed: () => onAction(action),
-                    icon: Icon(action.icon),
-                    label: Text(action.label),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: action.color,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                    ),
-                  ),
-                ],
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3,
+                  color: Color(0xFF6B6B70),
+                ),
               ),
-            )),
+            ),
+            for (int i = 0; i < actions.length; i++) ...[
+              _ActionTile(
+                action: actions[i],
+                onTap: onAction == null ? null : () => onAction!(actions[i]),
+              ),
+              if (i != actions.length - 1)
+                const Divider(height: 1, indent: 72, endIndent: 16),
+            ],
+            const SizedBox(height: 4),
           ],
         ),
       ),
@@ -402,6 +504,86 @@ class _SettingsSection extends StatelessWidget {
   }
 }
 
+class _ActionTile extends StatelessWidget {
+  final _SettingsAction action;
+  final VoidCallback? onTap;
+
+  const _ActionTile({required this.action, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: action.color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(action.icon, color: action.color, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            action.title,
+                            style: const TextStyle(
+                              fontSize: 15.5,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1F1F23),
+                            ),
+                          ),
+                        ),
+                        if (action.badge != null) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              action.badge!,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.orange,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      action.description,
+                      style: const TextStyle(fontSize: 13, color: Color(0xFF8A8A8F), height: 1.3),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right_rounded, color: Color(0xFFC4C4C8)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 // ─── Parse yardımcıları (settings.dart'ta kalabilir) ─────────────────────────
 
@@ -446,7 +628,7 @@ List<MemberState> parseToMemberStates(Object? raw) {
 
 String formatDateTime(DateTime dt) {
   const days = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
-  
+
   final day    = dt.day.toString().padLeft(2, '0');
   final month  = dt.month.toString().padLeft(2, '0');
   final year   = dt.year.toString();
