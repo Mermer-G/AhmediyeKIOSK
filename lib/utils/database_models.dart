@@ -295,6 +295,42 @@ class Reason {
   }
 }
 
+enum UserRole {
+  admin,
+  operator,
+}
+
+class Operator {
+  String id;
+  String username;
+  String password;
+
+  Operator({
+    required this.id,
+    required this.username,
+    required this.password,
+  });
+
+  factory Operator.fromMap(Map<dynamic, dynamic> rawMap) {
+    final data = Map<String, dynamic>.from(rawMap);
+
+    return Operator(
+      id: data['id']?.toString() ?? '',
+      username: data['username']?.toString() ?? '',
+      password: data['password']?.toString() ?? '',
+    );
+  }
+
+  static Map<String, dynamic> toMap(Operator operator) {
+    return {
+      'id': operator.id,
+      'username': operator.username,
+      'password': operator.password,
+    };
+  }
+}
+
+
 ///Has no use for now. If there is any it will be refactored
 List<T> parseToDataType<T>(//This method is only used for parsing values of a whole list
   Map<String, dynamic> rawReadValue,

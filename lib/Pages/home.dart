@@ -1,6 +1,7 @@
 import 'package:app1/Pages/addMemberPage.dart';
 import 'package:app1/Pages/entryList.dart';
 import 'package:app1/Pages/generalStatusPage.dart';
+import 'package:app1/Pages/operatorManagement.dart';
 import 'package:app1/Pages/passwordPage.dart';
 import 'package:app1/Pages/permissionPage.dart';
 import 'package:app1/Pages/reasonsPage.dart';
@@ -17,6 +18,7 @@ import 'package:hive_flutter/adapters.dart';
 import 'memberList.dart';
 import 'package:app1/Pages/queuePage.dart';
 import 'dart:async';
+import 'package:app1/utils/operator_service.dart';
 
 String settingsPassword = "365";
 int lastTimeStamp = 0;
@@ -41,11 +43,23 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+
+    operatorService = OperatorService.instance;
+
+    operatorService.addListener(_onOperatorChanged);
+
     _initialize();
   }
+
+    void _onOperatorChanged() {
+      if (!mounted) return;
+
+      setState(() {});
+    }
   
   final List<String> logs = []; // Logların tutulduğu liste
   final CommandListener _commandListener = CommandListener();
+  late final OperatorService operatorService;
 
   Future<void> _initialize() async {
     AppLogger.instance.log("INIT STARTED IN HOME PAGE");
@@ -92,9 +106,17 @@ class _HomePageState extends State<HomePage> {
       if(!kIsWeb){
         _commandListener.start();
         AppLogger.instance.log("COMMAND LISTENER: Komutlar dinleniyor.");
+      
+        await operatorService.initialize(context);
+        
+        if (!operatorService.isLoggedIn && operatorService.hasOperators) {
+          await operatorService.showLoginScreen(context);
+        }
+        AppLogger.instance.log("Operator service devreye girdi. \n \n \n");
       }
 
       AppLogger.instance.log("ALL INIT DONE - Uygulama hazır. \n \n \n");
+
 
     } catch (e, stack) {
       // Herhangi bir "Null check" veya "Firebase error" olursa buraya düşer
@@ -106,7 +128,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
+        return LayoutBuilder(
       builder: (context, constraints) {
         final bool isWide = constraints.maxWidth > 700;
 
@@ -243,6 +265,10 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _timer?.cancel();
     super.dispose();
+    
+    operatorService.removeListener(_onOperatorChanged);
+    operatorService.dispose();
+    
     if(!kIsWeb){
       _commandListener.stop();
     }
@@ -252,13 +278,39 @@ class _HomePageState extends State<HomePage> {
     return AppBar(
       centerTitle: true,
       elevation: 10.0,
-      title: Text(
+
+      title: const Text(
         'Ahmediye K.I.O.S.K',
         style: TextStyle(
-          color: Colors.white
+          color: Colors.white,
         ),
-        ),
-      backgroundColor: const Color.fromARGB(255, 90, 90, 90),
+      ),
+
+      backgroundColor: const Color.fromARGB(
+        255,
+        90,
+        90,
+        90,
+      ),
+
+      actions: [
+        if (operatorService.currentOperator != null)
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+
+            child: Center(
+              child: Text(
+                operatorService.currentOperator!.username,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+
+        
+      ],
     );
   }
 
@@ -414,6 +466,30 @@ class _HomePageState extends State<HomePage> {
               MaterialPageRoute(builder: (_) => GeneralStatusPage()),
             );
           }
+        ),
+
+        _menuButton(
+          icon: Icons.person_2_outlined,
+          text: "Operator Bilgisi",
+          onTap: () {
+            AppLogger.instance.log("Operator menüsüne tıklandı.");
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => OperatorManagementScreen()),
+            );
+          }
+        ),
+
+        _menuButton(
+          icon: Icons.logout,
+          text: "Operator Çıkışı",
+          onTap: () async {
+            operatorService.logout();
+
+            if (!mounted) return;
+
+            await operatorService.showLoginScreen(context);
+          },
         ),
       ],
     );

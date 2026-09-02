@@ -285,28 +285,27 @@ class CommandListener {
     final memberID = command.data['memberID'];
 
     if (memberID == null) {
-      throw Exception('MemberDelete command içinde MemberID bulunamadı.');
+      throw Exception(
+        'MemberDelete command içinde memberID bulunamadı.',
+      );
     }
 
     final memberKey = memberID.toString();
+
     final db = DatabaseService();
 
-    // HIVE
+    // =========================
+    // Hive
+    // =========================
+
     try {
-      final box = Hive.box(memberBox);
+      await Hive.box(memberBox).delete(memberKey);
+      await Hive.box(memberStateBox).delete(memberKey);
 
-      if (!box.containsKey(memberKey)) {
-        AppLogger.instance.log(
-          'Member Hive üzerinde bulunamadı: $memberKey',
-        );
-      } else {
-        await box.delete(memberKey);
-
-        AppLogger.instance.log(
-          'Member Hive üzerinden silindi: $memberKey',
-        );
-      }
-    } catch (e, stackTrace) {
+      AppLogger.instance.log(
+        'Member ve MemberState Hive üzerinden silindi: $memberKey',
+      );
+    } catch (e) {
       AppLogger.instance.error(
         'Member Hive silme hatası: $memberKey - $e',
       );
@@ -316,27 +315,27 @@ class CommandListener {
       );
     }
 
-    // FIREBASE
+    // =========================
+    // Firebase
+    // =========================
+
     try {
-      final ref = db.firebaseDatabase
+      await db.firebaseDatabase
           .ref()
           .child('Member')
-          .child(memberKey);
+          .child(memberKey)
+          .remove();
 
-      final snapshot = await ref.get();
+      await db.firebaseDatabase
+          .ref()
+          .child('MemberState')
+          .child(memberKey)
+          .remove();
 
-      if (!snapshot.exists) {
-        AppLogger.instance.log(
-          'Member Firebase üzerinde bulunamadı: $memberKey',
-        );
-      } else {
-        await ref.remove();
-
-        AppLogger.instance.log(
-          'Member Firebase üzerinden silindi: $memberKey',
-        );
-      }
-    } catch (e, stackTrace) {
+      AppLogger.instance.log(
+        'Member ve MemberState Firebase üzerinden silindi: $memberKey',
+      );
+    } catch (e) {
       AppLogger.instance.error(
         'Member Firebase silme hatası: $memberKey - $e',
       );

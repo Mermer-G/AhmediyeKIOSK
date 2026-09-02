@@ -15,6 +15,7 @@ const String metaBox = "MetaBox";
 const String queueBox = "QueueBox";
 const String reasonBox = "ReasonBox";
 const String permissionBox = "PermissionBox";
+const String operatorBox = 'operatorBox';
 
 int byteSizeOf(Map<String, dynamic> data) {
   final jsonString = jsonEncode(data);

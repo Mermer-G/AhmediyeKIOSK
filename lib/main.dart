@@ -37,6 +37,7 @@ void main() async {
   await Hive.openBox(queueBox);
   await Hive.openBox(reasonBox);
   await Hive.openBox(permissionBox);
+  await Hive.openBox(operatorBox);
 
   AppLogger.instance.warn("Forced DB URL: ${Firebase.app(fireBaseAppName).options.databaseURL}");
   // AppLogger.instance.warn("Normal DB URL: ${Firebase.app().options.databaseURL}");

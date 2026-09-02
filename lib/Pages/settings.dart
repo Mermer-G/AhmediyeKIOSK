@@ -1136,8 +1136,8 @@ class SettingsPageState extends State<SettingsPage> {
 
     await db.sendCommand(command);
 
-    // Web tarafındaki lokal Hive kaydını da hemen sil.
     await Hive.box(memberBox).delete(memberID);
+    await Hive.box(memberStateBox).delete(memberID);  
 
     return ActionResult.success;
   }
