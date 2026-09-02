@@ -1,8 +1,7 @@
+import 'package:app1/utils/database_models.dart';
 import 'package:app1/utils/database_service.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-
-part 'reasonsPage.g.dart';
 
 class ReasonPage extends StatefulWidget {
   const ReasonPage({super.key});
@@ -20,37 +19,26 @@ TimeOfDay stringToTimeOfDay(String time) {
   );
 }
 
-List<Reason> getReasons(String boxName){
-  final box = Hive.box<Reason>(boxName);
+List<Reason> getReasons(String boxName) {
+  final box = Hive.box(boxName);
   final List<Reason> reasons = [];
 
   for (var key in box.keys) {
     final reason = box.get(key);
 
-    if (reason != null)
-      reasons.add(reason);
+    if (reason != null) {
+      reasons.add(
+        Reason.fromMap(
+          Map<dynamic, dynamic>.from(reason),
+        ),
+      );
+    }
   }
+
   return reasons;
 }
 
-@HiveType(typeId: 0)
-class Reason extends HiveObject {
 
-  @HiveField(0)
-  String id = "";
-
-  @HiveField(1)
-  String name = "";
-
-  @HiveField(2)
-  List<int> days = [];
-
-  @HiveField(3)
-  String? startTime;
-
-  @HiveField(4)
-  String? endTime;
-}
 
 class _ReasonPageState extends State<ReasonPage> {
   final TextEditingController nameController =
@@ -75,7 +63,8 @@ class _ReasonPageState extends State<ReasonPage> {
     reasons = getReasons(reasonBox);
   }
 
-  final box = Hive.box<Reason>(reasonBox);
+  final db = DatabaseService(); 
+  final box = Hive.box(reasonBox);
   TimeOfDay? startTime;
   TimeOfDay? endTime;
 
@@ -101,8 +90,7 @@ class _ReasonPageState extends State<ReasonPage> {
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
                         "Sebep Bilgileri",
@@ -136,23 +124,21 @@ class _ReasonPageState extends State<ReasonPage> {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children:
-                            allDays.map((day) {
-                              return FilterChip(
-                                label: Text(day),
-                                selected:
-                                    selectedDays.contains(day),
-                                onSelected: (value) {
-                                  setState(() {
-                                    if (value) {
-                                      selectedDays.add(day);
-                                    } else {
-                                      selectedDays.remove(day);
-                                    }
-                                  });
-                                },
-                              );
-                            }).toList(),
+                        children: allDays.map((day) {
+                          return FilterChip(
+                            label: Text(day),
+                            selected: selectedDays.contains(day),
+                            onSelected: (value) {
+                              setState(() {
+                                if (value) {
+                                  selectedDays.add(day);
+                                } else {
+                                  selectedDays.remove(day);
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
                       ),
 
                       const SizedBox(height: 20),
@@ -162,11 +148,13 @@ class _ReasonPageState extends State<ReasonPage> {
                           Expanded(
                             child: ElevatedButton(
                               onPressed: () async {
-                                final result =
-                                    await showTimePicker(
-                                      context: context,
-                                      initialTime: TimeOfDay(hour: 0, minute: 0),
-                                    );
+                                final result = await showTimePicker(
+                                  context: context,
+                                  initialTime: const TimeOfDay(
+                                    hour: 0,
+                                    minute: 0,
+                                  ),
+                                );
 
                                 if (result != null) {
                                   setState(() {
@@ -177,8 +165,7 @@ class _ReasonPageState extends State<ReasonPage> {
                               child: Text(
                                 startTime == null
                                     ? "Başlangıç"
-                                    : startTime!
-                                        .format(context),
+                                    : startTime!.format(context),
                               ),
                             ),
                           ),
@@ -188,11 +175,13 @@ class _ReasonPageState extends State<ReasonPage> {
                           Expanded(
                             child: ElevatedButton(
                               onPressed: () async {
-                                final result =
-                                    await showTimePicker(
-                                      context: context,
-                                      initialTime: TimeOfDay(hour: 0, minute: 0),
-                                    );
+                                final result = await showTimePicker(
+                                  context: context,
+                                  initialTime: const TimeOfDay(
+                                    hour: 0,
+                                    minute: 0,
+                                  ),
+                                );
 
                                 if (result != null) {
                                   setState(() {
@@ -203,8 +192,7 @@ class _ReasonPageState extends State<ReasonPage> {
                               child: Text(
                                 endTime == null
                                     ? "Bitiş"
-                                    : endTime!
-                                        .format(context),
+                                    : endTime!.format(context),
                               ),
                             ),
                           ),
@@ -225,62 +213,86 @@ class _ReasonPageState extends State<ReasonPage> {
                                 ? "KAYDET"
                                 : "GÜNCELLE",
                           ),
-                          onPressed: () {
-                            setState(() {
-                              //Adding
-                              if (editingIndex == null) {
+                          onPressed: () async {
+                            // EKLEME
+                            if (editingIndex == null) {
+                              final reason = Reason(
+                                id: DateTime.now()
+                                    .millisecondsSinceEpoch
+                                    .toString(),
+                                name: nameController.text,
+                                days: selectedDays
+                                    .map(
+                                      (day) => allDays.indexOf(day) + 1,
+                                    )
+                                    .toList(),
+                                startTime: startTime == null
+                                    ? null
+                                    : "${startTime!.hour}:${startTime!.minute}",
+                                endTime: endTime == null
+                                    ? null
+                                    : "${endTime!.hour}:${endTime!.minute}",
+                              );
 
-                                var reason = Reason();
-                                reason.id = DateTime.now().millisecondsSinceEpoch.toString();
-                                reason.name = nameController.text;
-                                for (var day in selectedDays){
-                                  final index = allDays.indexOf(day) + 1;
-                                  reason.days.add(index);
-                                }
-                                if(startTime != null)
-                                {
-                                  reason.startTime = "${startTime!.hour}:${startTime!.minute}";
-                                }
-                                if(endTime != null)
-                                {
-                                  reason.endTime = "${endTime!.hour}:${endTime!.minute}";
-                                }
+                              await box.put(
+                                reason.id,
+                                Reason.toMap(reason),
+                              );
 
+                              await db.updateDB(
+                                path: "Reason/${reason.id}",
+                                data: Reason.toMap(reason),
+                              );
+
+                              setState(() {
                                 reasons.add(reason);
 
-                                //TODO: Hive box put with id
-                                box.put(reason.id, reason);
-                              } 
+                                editingIndex = null;
+                                nameController.clear();
+                                selectedDays.clear();
+                                startTime = null;
+                                endTime = null;
+                              });
+                            }
 
-                              //Editing
-                              else {
-                                reasons[editingIndex!].name = nameController.text;
-                                reasons[editingIndex!].days.clear();
-                                for (var day in selectedDays){
-                                  final index = allDays.indexOf(day) + 1;
-                                  reasons[editingIndex!].days.add(index);
-                                }
-                                if(startTime != null)
-                                {
-                                  reasons[editingIndex!].startTime = "${startTime!.hour}:${startTime!.minute}";
-                                }
-                                if(endTime != null)
-                                {
-                                  reasons[editingIndex!].endTime = "${endTime!.hour}:${endTime!.minute}";
-                                }
+                            // DÜZENLEME
+                            else {
+                              final reason = reasons[editingIndex!];
 
-                                box.put(reasons[editingIndex!].id, reasons[editingIndex!]);
-                              }
+                              reason.name = nameController.text;
 
-                              editingIndex = null;
+                              reason.days = selectedDays
+                                  .map(
+                                    (day) => allDays.indexOf(day) + 1,
+                                  )
+                                  .toList();
 
-                              nameController.clear();
+                              reason.startTime = startTime == null
+                                  ? null
+                                  : "${startTime!.hour}:${startTime!.minute}";
 
-                              selectedDays.clear();
+                              reason.endTime = endTime == null
+                                  ? null
+                                  : "${endTime!.hour}:${endTime!.minute}";
 
-                              startTime = null;
-                              endTime = null;
-                            });
+                              await box.put(
+                                reason.id,
+                                Reason.toMap(reason),
+                              );
+
+                              await db.updateDB(
+                                path: "Reason/${reason.id}",
+                                data: Reason.toMap(reason),
+                              );
+
+                              setState(() {
+                                editingIndex = null;
+                                nameController.clear();
+                                selectedDays.clear();
+                                startTime = null;
+                                endTime = null;
+                              });
+                            }
                           },
                         ),
                       ),
@@ -316,14 +328,15 @@ class _ReasonPageState extends State<ReasonPage> {
                           index,
                         ) {
                           return ListTile(
-                            leading:
-                                const Icon(
-                                  Icons.schedule,
-                                ),
-                            title:
-                                Text(reasons[index].name),
+                            leading: const Icon(
+                              Icons.schedule,
+                            ),
+                            title: Text(
+                              reasons[index].name,
+                            ),
                             trailing: Wrap(
                               children: [
+                                // DÜZENLE
                                 IconButton(
                                   icon: const Icon(
                                     Icons.edit,
@@ -332,41 +345,65 @@ class _ReasonPageState extends State<ReasonPage> {
                                     setState(() {
                                       editingIndex = index;
 
-                                      nameController.text = reasons[index].name;
+                                      final reason =
+                                          reasons[index];
 
-                                      if(reasons[index].startTime != null){
-                                        startTime = stringToTimeOfDay(reasons[index].startTime!);
-                                      }
-                                      if(reasons[index].endTime != null){
-                                        endTime = stringToTimeOfDay(reasons[index].endTime!);
-                                      }
+                                      nameController.text =
+                                          reason.name;
 
-                                      if(reasons[index].days.isNotEmpty){
-                                        setState(() {
-                                          selectedDays.clear();
-                                          for (var day in reasons[index].days){
-                                            selectedDays.add(allDays[day-1]);
-                                          }
-                                        });
-                                      }
+                                      startTime =
+                                          reason.startTime != null
+                                              ? stringToTimeOfDay(
+                                                  reason.startTime!,
+                                                )
+                                              : null;
 
+                                      endTime =
+                                          reason.endTime != null
+                                              ? stringToTimeOfDay(
+                                                  reason.endTime!,
+                                                )
+                                              : null;
+
+                                      selectedDays.clear();
+
+                                      for (var day
+                                          in reason.days) {
+                                        if (day >= 1 &&
+                                            day <= allDays.length) {
+                                          selectedDays.add(
+                                            allDays[day - 1],
+                                          );
+                                        }
+                                      }
                                     });
                                   },
                                 ),
+
+                                // SİL
                                 IconButton(
                                   icon: const Icon(
                                     Icons.delete,
                                   ),
-                                  onPressed: () {
-                                    box.delete(reasons[index].id);
+                                  onPressed: () async {
+                                    final reasonID = reasons[index].id;
+                                    await db.firebaseDatabase
+                                        .ref()
+                                        .child("Reason")
+                                        .child(reasonID)
+                                        .remove();
+
+                                    await box.delete(reasonID);
 
                                     setState(() {
-                                      reasons.removeAt(
-                                        index,
-                                      );
+                                      reasons.removeAt(index);
 
                                       if (editingIndex == index) {
                                         editingIndex = null;
+                                        nameController.clear();
+                                        selectedDays.clear();
+                                        startTime = null;
+                                        endTime = null;
                                       }
                                     });
                                   },

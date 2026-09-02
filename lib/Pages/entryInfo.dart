@@ -79,7 +79,7 @@ class _EntryInfoPageState extends State<EntryInfoPage> {
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
         title: Text(title),
-        subtitle: Text(value ?? "—"),
+        subtitle: SelectableText(value ?? "—"),
       ),
     );
   }

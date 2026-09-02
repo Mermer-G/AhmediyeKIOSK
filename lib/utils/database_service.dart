@@ -6,10 +6,11 @@ import 'package:app1/utils/debugger.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'command.dart';
 
 const String memberBox = "StudentBox";
-const String entryBox = "EntryBox";
 const String memberStateBox = "StudentStateBox";
+const String entryBox = "EntryBox";
 const String metaBox = "MetaBox";
 const String queueBox = "QueueBox";
 const String reasonBox = "ReasonBox";
@@ -23,7 +24,7 @@ int byteSizeOf(Map<String, dynamic> data) {
 class DatabaseService {
   late final FirebaseDatabase firebaseDatabase;
 
-    Future<bool> hasInternet() async {
+  Future<bool> hasInternet() async {
     try {
       final snapshot = await firebaseDatabase
           .ref("ping")
@@ -172,6 +173,13 @@ class DatabaseService {
     );
   }
 
+  Future<void> sendCommand(Command command) async {
+  await firebaseDatabase
+      .ref()
+      .child('Command')
+      .child(command.id)
+      .set(command.toMap());
+}
 }
 
 String formatTimeString(String? t) {

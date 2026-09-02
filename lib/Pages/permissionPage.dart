@@ -1,33 +1,29 @@
+import 'package:app1/utils/database_models.dart';
 import 'package:app1/utils/database_service.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
-part 'permissionPage.g.dart';
-
-@HiveType(typeId: 1)
-class Permission extends HiveObject {
-  @HiveField(0)
-  String id = "";
-
-  @HiveField(1)
-  String name = "";
-}
 
 List<Permission> getPermissions(String boxName) {
-  final box = Hive.box<Permission>(boxName);
-
+  final box = Hive.box(boxName);
   final List<Permission> permissions = [];
 
   for (var key in box.keys) {
     final person = box.get(key);
 
     if (person != null) {
-      permissions.add(person);
+      permissions.add(
+        Permission.fromMap(
+          Map<dynamic, dynamic>.from(person),
+        ),
+      );
     }
   }
 
   return permissions;
 }
+
+final db = DatabaseService();
 
 class PermissionPage extends StatefulWidget {
   const PermissionPage({super.key});
@@ -41,7 +37,7 @@ class _PermissionPageState extends State<PermissionPage> {
       TextEditingController();
 
   final box =
-      Hive.box<Permission>(permissionBox);
+      Hive.box(permissionBox);
 
   List<Permission> permissions = [];
 
@@ -108,55 +104,53 @@ class _PermissionPageState extends State<PermissionPage> {
                                 ? "KAYDET"
                                 : "GÜNCELLE",
                           ),
-                          onPressed: () {
-                            setState(() {
-                              // Adding
-                              if (editingIndex ==
-                                  null) {
-                                var person =
-                                    Permission();
+                          onPressed: () async {
+                            // EKLEME
+                            if (editingIndex == null) {
+                              final permission = Permission(
+                                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                                name: nameController.text,
+                              );
 
-                                person.id =
-                                    DateTime.now()
-                                        .millisecondsSinceEpoch
-                                        .toString();
+                              await box.put(
+                                permission.id,
+                                Permission.toMap(permission),
+                              );
 
-                                person.name =
-                                    nameController
-                                        .text;
+                              await db.updateDB(
+                                path: "Permission/${permission.id}",
+                                data: Permission.toMap(permission),
+                              );
 
-                                permissions
-                                    .add(person);
+                              setState(() {
+                                permissions.add(permission);
 
-                                box.put(
-                                  person.id,
-                                  person,
-                                );
-                              }
+                                editingIndex = null;
+                                nameController.clear();
+                              });
+                            }
 
-                              // Editing
-                              else {
-                                permissions[
-                                        editingIndex!]
-                                    .name =
-                                    nameController
-                                        .text;
+                            // DÜZENLEME
+                            else {
+                              final permission = permissions[editingIndex!];
 
-                                box.put(
-                                  permissions[
-                                          editingIndex!]
-                                      .id,
-                                  permissions[
-                                      editingIndex!],
-                                );
-                              }
+                              permission.name = nameController.text;
 
-                              editingIndex =
-                                  null;
+                              await box.put(
+                                permission.id,
+                                Permission.toMap(permission),
+                              );
 
-                              nameController
-                                  .clear();
-                            });
+                              await db.updateDB(
+                                path: "Permission/${permission.id}",
+                                data: Permission.toMap(permission),
+                              );
+
+                              setState(() {
+                                editingIndex = null;
+                                nameController.clear();
+                              });
+                            }
                           },
                         ),
                       ),
@@ -229,28 +223,24 @@ class _PermissionPageState extends State<PermissionPage> {
                                       const Icon(
                                     Icons.delete,
                                   ),
-                                  onPressed:
-                                      () {
-                                    box.delete(
-                                      permissions[
-                                              index]
-                                          .id,
-                                    );
+                                  onPressed: () async {
+                                    final permissionID = permissions[index].id;
 
-                                    setState(
-                                      () {
-                                        permissions
-                                            .removeAt(
-                                          index,
-                                        );
+                                      await db.firebaseDatabase
+                                        .ref()
+                                        .child("Permission")
+                                        .child(permissionID)
+                                        .remove();
 
-                                        if (editingIndex ==
-                                            index) {
-                                          editingIndex =
-                                              null;
-                                        }
-                                      },
-                                    );
+                                    await box.delete(permissionID);
+
+                                    setState(() {
+                                      permissions.removeAt(index);
+
+                                      if (editingIndex == index) {
+                                        editingIndex = null;
+                                      }
+                                    });
                                   },
                                 ),
                               ],

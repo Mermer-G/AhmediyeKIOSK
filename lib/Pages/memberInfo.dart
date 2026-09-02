@@ -161,9 +161,12 @@ class _MemberInfoPageState extends State<MemberInfoPage> {
   // Entry window
   Future<bool> showEntry(BuildContext context, Member member) async {
     final List<Reason> reasons = getReasons(reasonBox); 
-    final newReason = Reason();
-    newReason.name = "Diğer...";
-    newReason.days = [1,2,3,4,5,6,7];
+    final newReason = Reason(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: "Diğer...",
+      days: [1, 2, 3, 4, 5, 6, 7],
+    );
+
     reasons.add(newReason);
 
     final now = TimeOfDay.now();

@@ -227,6 +227,74 @@ class MemberState {
   }
 }
 
+class Permission {
+  String id;
+  String name;
+
+  Permission({
+    required this.id,
+    required this.name,
+  });
+
+  factory Permission.fromMap(Map<dynamic, dynamic> rawMap) {
+    final data = Map<String, dynamic>.from(rawMap);
+
+    return Permission(
+      id: data['id']?.toString() ?? '',
+      name: data['name']?.toString() ?? '',
+    );
+  }
+
+  static Map<String, dynamic> toMap(Permission permission) {
+    return {
+      'id': permission.id,
+      'name': permission.name,
+    };
+  }
+}
+
+class Reason {
+  String id;
+  String name;
+  List<int> days;
+  String? startTime;
+  String? endTime;
+
+  Reason({
+    required this.id,
+    required this.name,
+    required this.days,
+    this.startTime,
+    this.endTime,
+  });
+
+  factory Reason.fromMap(Map<dynamic, dynamic> rawMap) {
+    final data = Map<String, dynamic>.from(rawMap);
+
+    return Reason(
+      id: data['id']?.toString() ?? '',
+      name: data['name']?.toString() ?? '',
+      days: data['days'] != null
+          ? List<dynamic>.from(data['days'])
+              .map((e) => int.tryParse(e.toString()) ?? 0)
+              .toList()
+          : [],
+      startTime: data['startTime']?.toString(),
+      endTime: data['endTime']?.toString(),
+    );
+  }
+
+  static Map<String, dynamic> toMap(Reason reason) {
+    return {
+      'id': reason.id,
+      'name': reason.name,
+      'days': reason.days,
+      'startTime': reason.startTime,
+      'endTime': reason.endTime,
+    };
+  }
+}
+
 ///Has no use for now. If there is any it will be refactored
 List<T> parseToDataType<T>(//This method is only used for parsing values of a whole list
   Map<String, dynamic> rawReadValue,

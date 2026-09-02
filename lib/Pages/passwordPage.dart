@@ -42,6 +42,9 @@ class _PasswordPageState extends State<PasswordPage> {
                 labelText: "Şifre",
                 errorText: error,
               ),
+              onSubmitted: (_) {
+                checkPassword();
+              },
             ),
             const SizedBox(height: 20),
             ElevatedButton(

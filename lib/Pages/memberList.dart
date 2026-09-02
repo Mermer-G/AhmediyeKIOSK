@@ -1,4 +1,4 @@
-import 'package:app1/Pages/memerInfo.dart';
+import 'package:app1/Pages/memberInfo.dart';
 import 'package:app1/utils/database_models.dart';
 import 'package:app1/utils/debugger.dart';
 import 'package:flutter/material.dart';

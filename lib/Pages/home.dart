@@ -1,14 +1,17 @@
 import 'package:app1/Pages/addMemberPage.dart';
 import 'package:app1/Pages/entryList.dart';
+import 'package:app1/Pages/generalStatusPage.dart';
 import 'package:app1/Pages/passwordPage.dart';
 import 'package:app1/Pages/permissionPage.dart';
 import 'package:app1/Pages/reasonsPage.dart';
-import 'package:app1/Pages/memerInfo.dart';
+import 'package:app1/Pages/memberInfo.dart';
+import 'package:app1/utils/command.dart';
 import 'package:app1/utils/database_models.dart';
 import 'package:app1/utils/database_service.dart';
 import 'package:app1/utils/debugger.dart';
 import 'package:app1/utils/offline_queue.dart';
 import 'package:app1/utils/synchronizer.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'memberList.dart';
@@ -42,6 +45,7 @@ class _HomePageState extends State<HomePage> {
   }
   
   final List<String> logs = []; // Logların tutulduğu liste
+  final CommandListener _commandListener = CommandListener();
 
   Future<void> _initialize() async {
     AppLogger.instance.log("INIT STARTED IN HOME PAGE");
@@ -83,6 +87,12 @@ class _HomePageState extends State<HomePage> {
       AppLogger.instance.log("MERGE DONE");
 
       QueueHelper().syncQueue();
+      AppLogger.instance.log("OFFLINE SYNC: Kuyruk senkronize edildi.");
+
+      if(!kIsWeb){
+        _commandListener.start();
+        AppLogger.instance.log("COMMAND LISTENER: Komutlar dinleniyor.");
+      }
 
       AppLogger.instance.log("ALL INIT DONE - Uygulama hazır. \n \n \n");
 
@@ -233,9 +243,10 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _timer?.cancel();
     super.dispose();
+    if(!kIsWeb){
+      _commandListener.stop();
+    }
   }
-
-
 
   AppBar appBarM() {
     return AppBar(
@@ -389,6 +400,18 @@ class _HomePageState extends State<HomePage> {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => PermissionPage()),
+            );
+          }
+        ),
+
+        _menuButton(
+          icon: Icons.graphic_eq_rounded,
+          text: "Durum Bilgisi",
+          onTap: () {
+            AppLogger.instance.log("Durum menüsüne tıklandı.");
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => GeneralStatusPage()),
             );
           }
         ),

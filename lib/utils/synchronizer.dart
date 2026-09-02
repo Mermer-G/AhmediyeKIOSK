@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:app1/Pages/settings.dart';
 import 'package:app1/utils/database_models.dart';
 import 'package:app1/utils/database_service.dart';
@@ -30,47 +31,82 @@ class Synchronizer {
 
   void reset() {
     started = false;
+
+    AppLogger.instance.log(
+      "Synchronizer reset.",
+    );
   }
   
   bool started = false;
   Future<void> start() async {
-    if(started) return;
+    if (started) {
+      AppLogger.instance.log(
+        "Synchronizer.start() zaten başlatılmış, işlem atlandı.",
+      );
+      return;
+    }
+
     started = true;
-    AppLogger.instance.log("Inside Synchronizer().start()");
 
-    if(kIsWeb){
-      AppLogger.instance.log("kIsWeb.");
-      try {
-        AppLogger.instance.log("Fetching members once.");
-        await fetchMemberssOnce();
-      } catch (e, stack) {
-        AppLogger.instance.log("Failed to fetch members: $e");
-        AppLogger.instance.log("Error stack: $stack");
-      }
+    AppLogger.instance.log(
+      "========== Synchronizer START ==========",
+    );
 
-      //This one here is disabled because we don't need intant changes. f5 can get all the changes.
-      // try {
-      //   AppLogger.instance.log("Initializing pull listeners.");
-      //   await initSyncPullListeners();
-        
-      // } catch(e, stack) {
-      //   AppLogger.instance.log("Failed to initialize pull listeners: $e");
-      //   AppLogger.instance.log("Error stack: $stack");
-      // }
-    }
-    else{
-      AppLogger.instance.log("kIs NOT web.");
-      try {
-        AppLogger.instance.log("Initializing push listeners.");
+    try {
+      if (kIsWeb) {
+        AppLogger.instance.log(
+          "Platform: WEB",
+        );
+
+        // WEB:
+        // Firebase → Hive
+        AppLogger.instance.log(
+          "Web initial pull başlatılıyor...",
+        );
+
+        await initInitialPull();
+
+        AppLogger.instance.log(
+          "Web initial pull başarıyla tamamlandı.",
+        );
+
+        AppLogger.instance.log(
+          "Pull listenerlar başlatıldı.",
+        );
+
+      } else {
+        AppLogger.instance.log(
+          "Platform: MOBILE / TABLET",
+        );
+
+        // TABLET:
+        // Hive → Firebase
+        AppLogger.instance.log(
+          "Tablet push listener'ları başlatılıyor...",
+        );
+
         initSyncPushListeners();
-        
-      } catch(e, stack) {
-        AppLogger.instance.log("Failed to initialize push listeners: $e");
-        AppLogger.instance.log("Error stack: $stack");
+
+        AppLogger.instance.log(
+          "Tablet push listener'ları başarıyla başlatıldı.",
+        );
       }
+    } catch (e, stack) {
+      AppLogger.instance.error(
+        "Synchronizer.start() başarısız oldu: $e",
+      );
+
+      AppLogger.instance.error(
+        "Synchronizer stack trace: $stack",
+      );
+
+      // Başlatma başarısız olduysa tekrar denenebilmesine izin ver.
+      started = false;
     }
 
-
+    AppLogger.instance.log(
+      "========== Synchronizer END ==========",
+    );
   }
 
 
@@ -89,8 +125,8 @@ class Synchronizer {
         } catch (e) {
           await QueueHelper.addToSyncQueue(path, data);
           
-          AppLogger.instance.showOverlay("Bir öğrenci verisi veritabanına aktarılamadı! Daha sonra işlenmek üzere yerel olarak kaydedildi. \n İnternet bağlantınızı kontrol edin!", LogLevel.error);
-          AppLogger.instance.error("Bir öğrenci verisi veritabanına aktarılamadı! Daha sonra işlenmek üzere yerel olarak kaydedildi. \n İnternet bağlantınızı kontrol edin!");
+          AppLogger.instance.showOverlay("Bir üye verisi veritabanına aktarılamadı! Daha sonra işlenmek üzere yerel olarak kaydedildi. \n İnternet bağlantınızı kontrol edin!", LogLevel.error);
+          AppLogger.instance.error("Bir üye verisi veritabanına aktarılamadı! Daha sonra işlenmek üzere yerel olarak kaydedildi. \n İnternet bağlantınızı kontrol edin!");
         }
       }
     });
@@ -114,46 +150,240 @@ class Synchronizer {
     });
   }
 
-  Future<void> fetchMemberssOnce() async {
-    AppLogger.instance.log("Fetching members (one-shot)...");
+  Future<void> initInitialPull() async {
+    int totalBytes = 0;
 
-    final snapshot = await memberRef.get(); // ✅ sadece 1 kez
+    AppLogger.instance.log(
+      "========== INITIAL PULL START ==========",
+    );
 
-    if (!snapshot.exists) {
-      AppLogger.instance.warn("No members found.");
-      return;
-    }
+    // ─────────────────────────────
+    // Member State
+    // ─────────────────────────────
 
-    final data = snapshot.value;
+    try {
+      AppLogger.instance.log("📥 Fetching MemberState...");
 
-    if (data is! Map) {
-      AppLogger.instance.error("Unexpected data format.");
-      return;
-    }
+      final snapshot = await memberStateRef.get();
 
-    final Map<dynamic, dynamic> membersMap = data;
+      if (snapshot.exists) {
+        final jsonString = jsonEncode(snapshot.value);
+        final bytes = utf8.encode(jsonString).length;
+        totalBytes += bytes;
 
-    for (final entry in membersMap.entries) {
-      final key = entry.key;
-      final value = entry.value;
-
-      AppLogger.instance.log("Got member with key: $key");
-
-      final member = parseToMember(value);
-
-      if (member != null) {
-        _dbService.updateHive(
-          path: "${member.group}_${member.number}",
-          data: Member.toMap(member),
-          b: Hive.box(memberBox),
+        AppLogger.instance.log(
+          "📦 MemberState Download Size: $bytes bytes",
         );
+
+        final data = snapshot.value;
+
+        if (data is Map) {
+          int count = 0;
+
+          for (final entry in data.entries) {
+            final memberState = parseToMemberState(entry.value);
+
+            if (memberState == null) {
+              AppLogger.instance.error(
+                "Could not parse MemberState: ${entry.key}",
+              );
+              continue;
+            }
+
+            final path =
+                "${memberState.group}_${memberState.number}";
+
+            _dbService.updateHive(
+              path: path,
+              data: MemberState.toMap(memberState),
+              b: Hive.box(memberStateBox),
+            );
+
+            count++;
+          }
+
+          AppLogger.instance.log(
+            "✅ Loaded $count member states.",
+          );
+        } else {
+          AppLogger.instance.error(
+            "Unexpected MemberState data format.",
+          );
+        }
       } else {
-        AppLogger.instance.error("Could not parse member!");
+        AppLogger.instance.log(
+          "No MemberState data found.",
+        );
       }
+    } catch (e, stack) {
+      AppLogger.instance.error(
+        "Failed to pull MemberState: $e",
+      );
+      AppLogger.instance.error(
+        "Stack: $stack",
+      );
     }
 
-    lastUpdateTime = DateTime.now();
-  } 
+    // ─────────────────────────────
+    // Entries
+    // ─────────────────────────────
+
+    try {
+      AppLogger.instance.log(
+        "📥 Fetching last $entryPullLimit entries...",
+      );
+
+      final snapshot = await entriesRef
+          .orderByChild(entryIDDB)
+          .limitToLast(entryPullLimit)
+          .get();
+
+      if (snapshot.exists) {
+        final jsonString = jsonEncode(snapshot.value);
+        final bytes = utf8.encode(jsonString).length;
+        totalBytes += bytes;
+
+        AppLogger.instance.log(
+          "📦 Entries Download Size: $bytes bytes",
+        );
+
+        final data = snapshot.value;
+
+        if (data is Map) {
+          int count = 0;
+
+          for (final entry in data.entries) {
+            final entryObj = parseToEntry(entry.value);
+
+            if (entryObj == null) {
+              AppLogger.instance.error(
+                "Could not parse Entry: ${entry.key}",
+              );
+              continue;
+            }
+
+            _dbService.updateHive(
+              path: entryObj.entryID.toString(),
+              data: Entry.toMap(entryObj),
+              b: Hive.box(entryBox),
+            );
+
+            count++;
+          }
+
+          AppLogger.instance.log(
+            "✅ Loaded $count entries.",
+          );
+        } else {
+          AppLogger.instance.error(
+            "Unexpected Entry data format.",
+          );
+        }
+      } else {
+        AppLogger.instance.log(
+          "No Entry data found.",
+        );
+      }
+    } catch (e, stack) {
+      AppLogger.instance.error(
+        "Failed to pull Entries: $e",
+      );
+      AppLogger.instance.error(
+        "Stack: $stack",
+      );
+    }
+
+    // ─────────────────────────────
+    // Members
+    // ─────────────────────────────
+
+    try {
+      AppLogger.instance.log(
+        "📥 Fetching Members...",
+      );
+
+      final snapshot = await memberRef.get();
+
+      if (snapshot.exists) {
+        final jsonString = jsonEncode(snapshot.value);
+        final bytes = utf8.encode(jsonString).length;
+        totalBytes += bytes;
+
+        AppLogger.instance.log(
+          "📦 Members Download Size: $bytes bytes",
+        );
+
+        final data = snapshot.value;
+
+        if (data is Map) {
+          int count = 0;
+
+          for (final entry in data.entries) {
+            final member = parseToMember(entry.value);
+
+            if (member == null) {
+              AppLogger.instance.error(
+                "Could not parse Member: ${entry.key}",
+              );
+              continue;
+            }
+
+            _dbService.updateHive(
+              path: "${member.group}_${member.number}",
+              data: Member.toMap(member),
+              b: Hive.box(memberBox),
+            );
+
+            count++;
+          }
+
+          lastUpdateTime = DateTime.now();
+
+          AppLogger.instance.log(
+            "✅ Loaded $count members.",
+          );
+        } else {
+          AppLogger.instance.error(
+            "Unexpected Member data format.",
+          );
+        }
+      } else {
+        AppLogger.instance.log(
+          "No Member data found.",
+        );
+      }
+    } catch (e, stack) {
+      AppLogger.instance.error(
+        "Failed to pull Members: $e",
+      );
+      AppLogger.instance.error(
+        "Stack: $stack",
+      );
+    }
+
+    // ─────────────────────────────
+    // Download summary
+    // ─────────────────────────────
+
+    AppLogger.instance.log(
+      "📊 TOTAL DOWNLOAD: $totalBytes bytes",
+    );
+
+    AppLogger.instance.log(
+      "📊 TOTAL DOWNLOAD: "
+      "${(totalBytes / 1024).toStringAsFixed(2)} KB",
+    );
+
+    AppLogger.instance.log(
+      "📊 TOTAL DOWNLOAD: "
+      "${(totalBytes / (1024 * 1024)).toStringAsFixed(4)} MB",
+    );
+
+    AppLogger.instance.log(
+      "========== INITIAL PULL END ==========",
+    );
+  }
+
 
 
 }

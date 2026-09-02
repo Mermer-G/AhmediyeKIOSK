@@ -1,6 +1,4 @@
 import 'package:app1/Pages/home.dart';
-import 'package:app1/Pages/permissionPage.dart';
-import 'package:app1/Pages/reasonsPage.dart';
 import 'package:app1/utils/debugger.dart';
 import 'package:flutter/material.dart';
 import 'package:app1/utils/database_service.dart';
@@ -37,11 +35,8 @@ void main() async {
   await Hive.openBox(memberStateBox);
   await Hive.openBox(metaBox);
   await Hive.openBox(queueBox);
-  Hive.registerAdapter(ReasonAdapter());
-  await Hive.openBox<Reason>(reasonBox);
-
-  Hive.registerAdapter(PermissionAdapter());
-  await Hive.openBox<Permission>(permissionBox);
+  await Hive.openBox(reasonBox);
+  await Hive.openBox(permissionBox);
 
   AppLogger.instance.warn("Forced DB URL: ${Firebase.app(fireBaseAppName).options.databaseURL}");
   // AppLogger.instance.warn("Normal DB URL: ${Firebase.app().options.databaseURL}");
