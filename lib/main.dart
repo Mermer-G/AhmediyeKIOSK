@@ -7,7 +7,6 @@ import 'package:hive_flutter/adapters.dart';
 import 'firebase_options_dev.dart' as dev;
 import 'firebase_options_release.dart' as prod;
 
-// const env = String.fromEnvironment('ENV');
 const bool DEVBUILD = true; 
 
 FirebaseOptions get firebaseOptions {
@@ -37,7 +36,7 @@ void main() async {
   await Hive.openBox(queueBox);
   await Hive.openBox(reasonBox);
   await Hive.openBox(permissionBox);
-  await Hive.openBox(operatorBox);
+  await Hive.openBox(userBox);
 
   AppLogger.instance.warn("Forced DB URL: ${Firebase.app(fireBaseAppName).options.databaseURL}");
   // AppLogger.instance.warn("Normal DB URL: ${Firebase.app().options.databaseURL}");

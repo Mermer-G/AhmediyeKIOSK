@@ -1,8 +1,11 @@
 import "dart:async";
+import "package:app1/Pages/home.dart";
 import "package:app1/utils/database_service.dart";
 import "package:app1/utils/debugger.dart";
 import "package:firebase_database/firebase_database.dart";
+import "package:flutter/foundation.dart";
 import "package:hive/hive.dart";
+import 'database_service.dart';
 
 class CommandListener {
   StreamSubscription<DatabaseEvent>? _subscription;
@@ -44,6 +47,12 @@ class CommandListener {
     DatabaseReference ref,
     Command command,
   ) async {
+    if(kIsWeb){
+      if(command.receivedDevices.containsKey(deviceID)) 
+        return;
+    }
+    
+    
     AppLogger.instance.log(
       'Yeni command algılandı: ${command.id}',
     );
@@ -61,6 +70,24 @@ class CommandListener {
       await _setCompleted(ref, command);
     } catch (e) {
       await _setFailed(ref, command, e);
+    }
+    
+    try{
+      // WEB COMMAND RECEIVED
+      if (kIsWeb) {
+        final dbService = DatabaseService();
+        await dbService.updateDB(
+          path: 'Command/${command.id}/receivedDevices',
+          data: {
+            deviceID: 'completed',
+          },
+        );
+
+        AppLogger.instance.log("Sent completed for received command: ${command.id}",level: LogLevel.warning);
+      }
+    } catch (e) {
+      // ortak command hata yönetimi
+      rethrow;
     }
   }
 
@@ -149,40 +176,119 @@ class CommandListener {
         'Entry Hive üzerinden silinemedi: $e',
       );
     }
+    if (!kIsWeb) {
+      // FIREBASE
+      try {
+        final ref = db.firebaseDatabase
+            .ref()
+            .child('Entry')
+            .child(entryKey);
 
-    // FIREBASE
-    try {
-      final ref = db.firebaseDatabase
-          .ref()
-          .child('Entry')
-          .child(entryKey);
+        final snapshot = await ref.get();
 
-      final snapshot = await ref.get();
+        if (!snapshot.exists) {
+          AppLogger.instance.log(
+            'Entry Firebase üzerinde bulunamadı: $entryKey',
+          );
+        } else {
+          await ref.remove();
 
-      if (!snapshot.exists) {
-        AppLogger.instance.log(
-          'Entry Firebase üzerinde bulunamadı: $entryKey',
+          AppLogger.instance.log(
+            'Entry Firebase üzerinden silindi: $entryKey',
+          );
+        }
+      } catch (e, stackTrace) {
+        AppLogger.instance.error(
+          'Entry Firebase silme hatası: $entryKey - $e',
         );
-      } else {
-        await ref.remove();
 
-        AppLogger.instance.log(
-          'Entry Firebase üzerinden silindi: $entryKey',
+        throw Exception(
+          'Entry Firebase üzerinden silinemedi: $e',
         );
       }
-    } catch (e, stackTrace) {
-      AppLogger.instance.error(
-        'Entry Firebase silme hatası: $entryKey - $e',
-      );
-
-      throw Exception(
-        'Entry Firebase üzerinden silinemedi: $e',
-      );
     }
   }
 
   Future<void> _executeEntryEditCommand(Command command) async {
-    // TODO
+    final entryID = command.data['entryID'];
+    final entryData = command.data['entry'];
+
+    if (entryID == null) {
+      throw Exception(
+        'EntryEdit command içinde EntryID bulunamadı.',
+      );
+    }
+
+    if (entryData == null) {
+      throw Exception(
+        'EntryEdit command içinde Entry verisi bulunamadı.',
+      );
+    }
+
+    final entryKey = entryID.toString();
+
+    try {
+      final box = Hive.box(entryBox);
+
+      if (!box.containsKey(entryKey)) {
+        throw Exception(
+          'Düzenlenecek Entry Hive üzerinde bulunamadı: $entryKey',
+        );
+      }
+
+      final entryMap = Map<String, dynamic>.from(entryData);
+
+      await box.put(
+        entryKey,
+        entryMap,
+      );
+
+      AppLogger.instance.log(
+        'Entry Hive üzerinde güncellendi: $entryKey',
+      );
+    } catch (e) {
+      AppLogger.instance.error(
+        'Entry Hive güncelleme hatası: $entryKey - $e',
+      );
+
+      throw Exception(
+        'Entry Hive üzerinde güncellenemedi: $e',
+      );
+    }
+
+    if (!kIsWeb) {
+      try {
+        final ref = DatabaseService()
+            .firebaseDatabase
+            .ref()
+            .child('Entry')
+            .child(entryKey);
+
+        final snapshot = await ref.get();
+
+        if (!snapshot.exists) {
+          throw Exception(
+            'Düzenlenecek Entry Firebase üzerinde bulunamadı: $entryKey',
+          );
+        }
+
+        final entryMap = Map<String, dynamic>.from(entryData);
+
+        await ref.update(entryMap);
+
+        AppLogger.instance.log(
+          'Entry Firebase üzerinde güncellendi: $entryKey',
+        );
+      } catch (e) {
+        AppLogger.instance.error(
+          'Entry Firebase güncelleme hatası: $entryKey - $e',
+        );
+
+        throw Exception(
+          'Entry Firebase üzerinde güncellenemedi: $e',
+        );
+      }
+    }
   }
 
   Future<void> _executeEntryCreateExistingCommand(Command command) async {
@@ -237,47 +343,49 @@ class CommandListener {
       );
     }
 
-    // ------------------------------------------------------------
-    // 2. Firebase kontrolü + ekleme
-    // ------------------------------------------------------------
+    if(!kIsWeb){
+      // ------------------------------------------------------------
+      // 2. Firebase kontrolü + ekleme
+      // ------------------------------------------------------------
 
-    try {
-      final ref = db.firebaseDatabase
-          .ref()
-          .child('Entry')
-          .child(entryKey);
+      try {
+        final ref = db.firebaseDatabase
+            .ref()
+            .child('Entry')
+            .child(entryKey);
 
-      final snapshot = await ref.get();
+        final snapshot = await ref.get();
 
-      // Mevcut Entry'nin üzerine kesinlikle yazma.
-      if (snapshot.exists) {
-        // Hive'a biraz önce eklediğimiz kaydı da geri al.
-        await Hive.box(entryBox).delete(entryKey);
+        // Mevcut Entry'nin üzerine kesinlikle yazma.
+        if (snapshot.exists) {
+          // Hive'a biraz önce eklediğimiz kaydı da geri al.
+          await Hive.box(entryBox).delete(entryKey);
+
+          throw Exception(
+            'Entry zaten Firebase üzerinde mevcut: $entryKey',
+          );
+        }
+
+        await ref.set(entryMap);
+
+        AppLogger.instance.log(
+          'Yeni Entry Firebase üzerine eklendi: $entryKey',
+        );
+      } catch (e, stackTrace) {
+        AppLogger.instance.error(
+          'Entry Firebase ekleme hatası: $entryKey - $e',
+        );
+
+        // Firebase işlemi başarısız olduysa Hive'daki
+        // henüz senkronize edilmemiş kaydı da kaldır.
+        try {
+          await Hive.box(entryBox).delete(entryKey);
+        } catch (_) {}
 
         throw Exception(
-          'Entry zaten Firebase üzerinde mevcut: $entryKey',
+          'Entry Firebase üzerine eklenemedi: $e',
         );
       }
-
-      await ref.set(entryMap);
-
-      AppLogger.instance.log(
-        'Yeni Entry Firebase üzerine eklendi: $entryKey',
-      );
-    } catch (e, stackTrace) {
-      AppLogger.instance.error(
-        'Entry Firebase ekleme hatası: $entryKey - $e',
-      );
-
-      // Firebase işlemi başarısız olduysa Hive'daki
-      // henüz senkronize edilmemiş kaydı da kaldır.
-      try {
-        await Hive.box(entryBox).delete(entryKey);
-      } catch (_) {}
-
-      throw Exception(
-        'Entry Firebase üzerine eklenemedi: $e',
-      );
     }
   }
 
@@ -314,35 +422,36 @@ class CommandListener {
         'Member Hive üzerinden silinemedi: $e',
       );
     }
+    if(!kIsWeb){
+      // =========================
+      // Firebase
+      // =========================
 
-    // =========================
-    // Firebase
-    // =========================
+      try {
+        await db.firebaseDatabase
+            .ref()
+            .child('Member')
+            .child(memberKey)
+            .remove();
 
-    try {
-      await db.firebaseDatabase
-          .ref()
-          .child('Member')
-          .child(memberKey)
-          .remove();
+        await db.firebaseDatabase
+            .ref()
+            .child('MemberState')
+            .child(memberKey)
+            .remove();
 
-      await db.firebaseDatabase
-          .ref()
-          .child('MemberState')
-          .child(memberKey)
-          .remove();
+        AppLogger.instance.log(
+          'Member ve MemberState Firebase üzerinden silindi: $memberKey',
+        );
+      } catch (e) {
+        AppLogger.instance.error(
+          'Member Firebase silme hatası: $memberKey - $e',
+        );
 
-      AppLogger.instance.log(
-        'Member ve MemberState Firebase üzerinden silindi: $memberKey',
-      );
-    } catch (e) {
-      AppLogger.instance.error(
-        'Member Firebase silme hatası: $memberKey - $e',
-      );
-
-      throw Exception(
-        'Member Firebase üzerinden silinemedi: $e',
-      );
+        throw Exception(
+          'Member Firebase üzerinden silinemedi: $e',
+        );
+      }
     }
   }
 
@@ -394,35 +503,36 @@ class CommandListener {
         'Member Hive üzerinde güncellenemedi: $e',
       );
     }
+    if(!kIsWeb){
+      // FIREBASE
+      try {
+        final ref = db.firebaseDatabase
+            .ref()
+            .child('Member')
+            .child(memberKey);
 
-    // FIREBASE
-    try {
-      final ref = db.firebaseDatabase
-          .ref()
-          .child('Member')
-          .child(memberKey);
+        final snapshot = await ref.get();
 
-      final snapshot = await ref.get();
+        if (!snapshot.exists) {
+          AppLogger.instance.log(
+            'Member Firebase üzerinde bulunamadı: $memberKey',
+          );
+        }
 
-      if (!snapshot.exists) {
+        await ref.update(memberMap);
+
         AppLogger.instance.log(
-          'Member Firebase üzerinde bulunamadı: $memberKey',
+          'Member Firebase üzerinde güncellendi: $memberKey',
+        );
+      } catch (e, stackTrace) {
+        AppLogger.instance.error(
+          'Member Firebase güncelleme hatası: $memberKey - $e',
+        );
+
+        throw Exception(
+          'Member Firebase üzerinde güncellenemedi: $memberKey',
         );
       }
-
-      await ref.update(memberMap);
-
-      AppLogger.instance.log(
-        'Member Firebase üzerinde güncellendi: $memberKey',
-      );
-    } catch (e, stackTrace) {
-      AppLogger.instance.error(
-        'Member Firebase güncelleme hatası: $memberKey - $e',
-      );
-
-      throw Exception(
-        'Member Firebase üzerinde güncellenemedi: $memberKey',
-      );
     }
   }
 
@@ -459,19 +569,23 @@ class CommandListener {
 
 class Command {
   final String id;
+  final String admin;
   final CommandType type;
   final CommandStatus status;
   final Map<String, dynamic> data;
+  final Map<String, dynamic> receivedDevices;
   final int createdAt;
   final int? completedAt;
   final String? error;
 
   Command({
     required this.id,
+    required this.admin,
     required this.type,
     required this.status,
     required this.data,
     required this.createdAt,
+    required this.receivedDevices,
     this.completedAt,
     this.error,
   });
@@ -479,9 +593,11 @@ class Command {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'admin': admin,
       'type': type.name,
       'status': status.name,
       'data': data,
+      'receivedDevices': receivedDevices,
       'createdAt': createdAt,
       'completedAt': completedAt,
       'error': error,
@@ -491,9 +607,11 @@ class Command {
   factory Command.fromMap(Map<String, dynamic> map) {
     return Command(
       id: map['id'],
+      admin: map['admin'],
       type: CommandType.values.byName(map['type']),
       status: CommandStatus.values.byName(map['status']),
       data: Map<String, dynamic>.from(map['data'] ?? {}),
+      receivedDevices: Map<String, dynamic>.from(map['receivedDevices'] ?? {}),
       createdAt: map['createdAt'],
       completedAt: map['completedAt'],
       error: map['error'],

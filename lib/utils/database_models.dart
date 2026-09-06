@@ -300,32 +300,38 @@ enum UserRole {
   operator,
 }
 
-class Operator {
+class User {
   String id;
   String username;
   String password;
+  UserRole role;
 
-  Operator({
+  User({
     required this.id,
     required this.username,
     required this.password,
+    required this.role,
   });
 
-  factory Operator.fromMap(Map<dynamic, dynamic> rawMap) {
+  factory User.fromMap(Map<dynamic, dynamic> rawMap) {
     final data = Map<String, dynamic>.from(rawMap);
 
-    return Operator(
+    return User(
       id: data['id']?.toString() ?? '',
       username: data['username']?.toString() ?? '',
       password: data['password']?.toString() ?? '',
+      role: data['role'] == 'admin'
+          ? UserRole.admin
+          : UserRole.operator,
     );
   }
 
-  static Map<String, dynamic> toMap(Operator operator) {
+  static Map<String, dynamic> toMap(User user) {
     return {
-      'id': operator.id,
-      'username': operator.username,
-      'password': operator.password,
+      'id': user.id,
+      'username': user.username,
+      'password': user.password,
+      'role': user.role.name,
     };
   }
 }

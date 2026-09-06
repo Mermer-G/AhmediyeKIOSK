@@ -1,4 +1,6 @@
+import 'package:app1/Pages/home.dart';
 import 'package:app1/main.dart';
+import 'package:app1/utils/auth_service.dart';
 import 'package:app1/utils/database_models.dart';
 import 'package:app1/utils/database_service.dart';
 import 'package:app1/utils/debugger.dart';
@@ -267,58 +269,58 @@ class SettingsPageState extends State<SettingsPage> {
       },
     ),   
     _SettingsAction(
-    section: 'Veri İtme',
-    title: 'Seçili Üyeyi Firebase\'e Gönder',
-    description:
-        'Belirtilen üyenin Member ve MemberState verilerini Firebase\'e gönderir.',
-    label: 'Gönderilecek üyenin ID bilgisini işlem öncesinde belirle.',
-    icon: Icons.upload_rounded,
-    color: Colors.blue,
-    confirmTitle: 'Üyeyi Firebase\'e gönder',
-    confirmMessage:
-        'Göndermek istediğin üyenin ID bilgisini belirleyebilirsin.',
-    onConfirm: () async {
-      final memberId = await showDialog<String>(
-        context: context,
-        builder: (dialogContext) {
-          final controller = TextEditingController();
+      section: 'Veri İtme',
+      title: 'Seçili Üyeyi Firebase\'e Gönder',
+      description:
+          'Belirtilen üyenin Member ve MemberState verilerini Firebase\'e gönderir.',
+      label: 'Gönderilecek üyenin ID bilgisini işlem öncesinde belirle.',
+      icon: Icons.upload_rounded,
+      color: Colors.blue,
+      confirmTitle: 'Üyeyi Firebase\'e gönder',
+      confirmMessage:
+          'Göndermek istediğin üyenin ID bilgisini belirleyebilirsin.',
+      onConfirm: () async {
+        final memberId = await showDialog<String>(
+          context: context,
+          builder: (dialogContext) {
+            final controller = TextEditingController();
 
-          return AlertDialog(
-            title: const Text('Member ID'),
-            content: TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                labelText: 'Member ID',
-                hintText: 'Örneğin: B_1',
+            return AlertDialog(
+              title: const Text('Member ID'),
+              content: TextField(
+                controller: controller,
+                decoration: const InputDecoration(
+                  labelText: 'Member ID',
+                  hintText: 'Örneğin: B_1',
+                ),
               ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('İptal'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  final value = controller.text.trim();
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('İptal'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final value = controller.text.trim();
 
-                  if (value.isEmpty) return;
+                    if (value.isEmpty) return;
 
-                  Navigator.pop(dialogContext, value);
-                },
-                child: const Text('Gönder'),
-              ),
-            ],
-          );
-        },
-      );
+                    Navigator.pop(dialogContext, value);
+                  },
+                  child: const Text('Gönder'),
+                ),
+              ],
+            );
+          },
+        );
 
-      if (memberId == null) {
-        return ActionResult.cancelled;
-      }
+        if (memberId == null) {
+          return ActionResult.cancelled;
+        }
 
-      return await _pushSelectedMember(memberId);
-    },
-  ),
+        return await _pushSelectedMember(memberId);
+      },
+    ),
     _SettingsAction(
       section: 'Sıfırlama',
       title: 'Firebase Üyelerini Sil',
@@ -440,94 +442,95 @@ class SettingsPageState extends State<SettingsPage> {
         return await _pushEntriesSinceDate(date);
       },
     ), 
-    _SettingsAction(
-      section: 'Komut',
-      title: 'Test Komutu Gönder',
-      description:
-          'Firebase üzerinden test amaçlı bir command oluşturur.',
-      label: 'Test command gönderildi.',
-      icon: Icons.send_rounded,
-      color: Colors.blue,
-      confirmTitle: 'Test komutu gönder',
-      confirmMessage:
-          'Tablete test amaçlı bir command gönderilecek.',
-      onConfirm: _sendTestCommand,
-    ),   
-    _SettingsAction(
-      section: 'Komut',
-      title: 'Giriş-Çıkış Sil',
-      description:
-          'Belirtilen Giriş-Çıkış kaydının silinmesi için tablete komut gönderir.',
-      label: 'Giriş-Çıkış silme komutu gönderildi.',
-      icon: Icons.delete_forever_rounded,
-      color: Colors.red,
-      confirmTitle: 'Giriş-Çıkış silme komutu gönder',
-      confirmMessage:
-          'Silmek istediğin Giriş-Çıkış ID\'sini gireceksin. '
-          'Silme işlemi tablet tarafından gerçekleştirilecek.',
-      onConfirm: _sendEntryDeleteCommand,
-    ),
-    _SettingsAction(
-      section: 'Komut',
-      title: 'Üye Sil',
-      description:
-          'Belirtilen Üye kaydının silinmesi için tablete komut gönderir.',
-      label: 'Üye silme komutu gönderildi.',
-      icon: Icons.person_remove,
-      color: Colors.red,
-      confirmTitle: 'Üye silme komutu gönder',
-      confirmMessage:
-          'Silmek istediğin Üye ID\'sini gireceksin. '
-          'Örneğin: B_1\n\n'
-          'Silme işlemi tablet tarafından gerçekleştirilecek.',
-      onConfirm: _sendMemberDeleteCommand,
-    ),
-    _SettingsAction(
-      section: 'Komut',
-      title: 'Member Düzenle',
-      description:
-          'Belirtilen Member kaydının düzenlenmesi için tablete komut gönderir.',
-      label: 'Member düzenleme komutu gönderildi.',
-      icon: Icons.edit,
-      color: Colors.blue,
-      confirmTitle: 'Member düzenleme komutu gönder',
-      confirmMessage:
-          'Düzenlemek istediğin Member ID\'sini gireceksin.\n\n'
-          'Örneğin: B_1\n\n'
-          'Düzenleme işlemi tablet tarafından gerçekleştirilecek.',
-      onConfirm: _sendMemberEditCommand,
-    ),
-    _SettingsAction(
-      section: 'Komut',
-      title: 'Entry Düzenle',
-      description:
-          'Belirtilen Entry kaydının düzenlenmesi için tablete komut gönderir.',
-      label: 'Entry düzenleme komutu gönderildi.',
-      icon: Icons.edit,
-      color: Colors.blue,
-      confirmTitle: 'Entry düzenleme komutu gönder',
-      confirmMessage:
-          'Düzenlemek istediğin Entry ID\'sini gireceksin.\n\n'
-          'Örneğin: 1788170089538\n\n'
-          'Düzenleme işlemi tablet tarafından gerçekleştirilecek.',
-      onConfirm: _sendEntryEditCommand,
-    ),
-    _SettingsAction(
-      section: 'Komut',
-      title: 'Geçmiş Entry Ekle',
-      description:
-          'Belirtilen Member için geçmiş tarihli bir Entry kaydı oluşturur.',
-      label: 'Geçmiş Entry ekleme komutu gönderildi.',
-      icon: Icons.history,
-      color: Colors.orange,
-      confirmTitle: 'Geçmiş Entry ekle',
-      confirmMessage:
-          'Geçmiş kayıt eklemek istediğin Member ID\'sini gireceksin.\n\n'
-          'Örneğin: B_1\n\n'
-          'Kayıt, seçilen ExitTime üzerinden benzersiz bir Entry ID ile oluşturulacaktır.',
-      onConfirm: _sendEntryHistoricalAddCommand,
-    )
-
+    if(AuthService.instance.currentUser!.role == UserRole.admin)...[
+      _SettingsAction(
+        section: 'Komut',
+        title: 'Test Komutu Gönder',
+        description:
+            'Firebase üzerinden test amaçlı bir command oluşturur.',
+        label: 'Test command gönderildi.',
+        icon: Icons.send_rounded,
+        color: Colors.blue,
+        confirmTitle: 'Test komutu gönder',
+        confirmMessage:
+            'Tablete test amaçlı bir command gönderilecek.',
+        onConfirm: _sendTestCommand,
+      ),   
+      _SettingsAction(
+        section: 'Komut',
+        title: 'Giriş-Çıkış Sil',
+        description:
+            'Belirtilen Giriş-Çıkış kaydının silinmesi için tablete komut gönderir.',
+        label: 'Giriş-Çıkış silme komutu gönderildi.',
+        icon: Icons.delete_forever_rounded,
+        color: Colors.red,
+        confirmTitle: 'Giriş-Çıkış silme komutu gönder',
+        confirmMessage:
+            'Silmek istediğin Giriş-Çıkış ID\'sini gireceksin. '
+            'Silme işlemi tablet tarafından gerçekleştirilecek.',
+        onConfirm: _sendEntryDeleteCommand,
+      ),
+      _SettingsAction(
+        section: 'Komut',
+        title: 'Üye Sil',
+        description:
+            'Belirtilen Üye kaydının silinmesi için tablete komut gönderir.',
+        label: 'Üye silme komutu gönderildi.',
+        icon: Icons.person_remove,
+        color: Colors.red,
+        confirmTitle: 'Üye silme komutu gönder',
+        confirmMessage:
+            'Silmek istediğin Üye ID\'sini gireceksin. '
+            'Örneğin: B_1\n\n'
+            'Silme işlemi tablet tarafından gerçekleştirilecek.',
+        onConfirm: _sendMemberDeleteCommand,
+      ),
+      _SettingsAction(
+        section: 'Komut',
+        title: 'Member Düzenle',
+        description:
+            'Belirtilen Member kaydının düzenlenmesi için tablete komut gönderir.',
+        label: 'Member düzenleme komutu gönderildi.',
+        icon: Icons.edit,
+        color: Colors.blue,
+        confirmTitle: 'Member düzenleme komutu gönder',
+        confirmMessage:
+            'Düzenlemek istediğin Member ID\'sini gireceksin.\n\n'
+            'Örneğin: B_1\n\n'
+            'Düzenleme işlemi tablet tarafından gerçekleştirilecek.',
+        onConfirm: _sendMemberEditCommand,
+      ),
+      _SettingsAction(
+        section: 'Komut',
+        title: 'Entry Düzenle',
+        description:
+            'Belirtilen Entry kaydının düzenlenmesi için tablete komut gönderir.',
+        label: 'Entry düzenleme komutu gönderildi.',
+        icon: Icons.edit,
+        color: Colors.blue,
+        confirmTitle: 'Entry düzenleme komutu gönder',
+        confirmMessage:
+            'Düzenlemek istediğin Entry ID\'sini gireceksin.\n\n'
+            'Örneğin: 1788170089538\n\n'
+            'Düzenleme işlemi tablet tarafından gerçekleştirilecek.',
+        onConfirm: _sendEntryEditCommand,
+      ),
+      _SettingsAction(
+        section: 'Komut',
+        title: 'Geçmiş Entry Ekle',
+        description:
+            'Belirtilen Member için geçmiş tarihli bir Entry kaydı oluşturur.',
+        label: 'Geçmiş Entry ekleme komutu gönderildi.',
+        icon: Icons.history,
+        color: Colors.orange,
+        confirmTitle: 'Geçmiş Entry ekle',
+        confirmMessage:
+            'Geçmiş kayıt eklemek istediğin Member ID\'sini gireceksin.\n\n'
+            'Örneğin: B_1\n\n'
+            'Kayıt, seçilen ExitTime üzerinden benzersiz bir Entry ID ile oluşturulacaktır.',
+        onConfirm: _sendEntryHistoricalAddCommand,
+      )
+    ]
  
     // Buraya yeni aksiyon ekle, ör:
     // _SettingsAction(
@@ -1010,12 +1013,14 @@ class SettingsPageState extends State<SettingsPage> {
 
     final command = Command(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
+      admin: AuthService.instance.currentUser!.username,
       type: CommandType.test,
       status: CommandStatus.pending,
       data: {
         'message': 'Hello from web!',
       },
       createdAt: DateTime.now().millisecondsSinceEpoch,
+      receivedDevices: {deviceID: "completed"}
     );
 
     await db.sendCommand(command);
@@ -1067,12 +1072,14 @@ class SettingsPageState extends State<SettingsPage> {
 
     final command = Command(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
+      admin: AuthService.instance.currentUser!.username,
       type: CommandType.entryDelete,
       status: CommandStatus.pending,
       data: {
         'entryID': entryID,
       },
       createdAt: DateTime.now().millisecondsSinceEpoch,
+      receivedDevices: {deviceID: "completed"}
     );
 
     await db.sendCommand(command);
@@ -1126,12 +1133,14 @@ class SettingsPageState extends State<SettingsPage> {
 
     final command = Command(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
+      admin: AuthService.instance.currentUser!.username,
       type: CommandType.memberDelete,
       status: CommandStatus.pending,
       data: {
         'memberID': memberID,
       },
       createdAt: DateTime.now().millisecondsSinceEpoch,
+      receivedDevices: {deviceID: "completed"}
     );
 
     await db.sendCommand(command);
@@ -1316,6 +1325,7 @@ class SettingsPageState extends State<SettingsPage> {
 
     final command = Command(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
+      admin: AuthService.instance.currentUser!.username,
       type: CommandType.memberEdit,
       status: CommandStatus.pending,
       data: {
@@ -1323,6 +1333,7 @@ class SettingsPageState extends State<SettingsPage> {
         'member': Member.toMap(editedMember),
       },
       createdAt: DateTime.now().millisecondsSinceEpoch,
+      receivedDevices: {deviceID: "completed"}
     );
 
     await db.sendCommand(command);
@@ -1593,6 +1604,7 @@ class SettingsPageState extends State<SettingsPage> {
 
     final command = Command(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
+      admin: AuthService.instance.currentUser!.username,
       type: CommandType.entryEdit,
       status: CommandStatus.pending,
       data: {
@@ -1600,6 +1612,7 @@ class SettingsPageState extends State<SettingsPage> {
         'entry': Entry.toMap(editedEntry),
       },
       createdAt: DateTime.now().millisecondsSinceEpoch,
+      receivedDevices: {deviceID: "completed"}
     );
 
     await db.sendCommand(command);
@@ -1969,6 +1982,7 @@ class SettingsPageState extends State<SettingsPage> {
 
         final command = Command(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
+          admin: AuthService.instance.currentUser!.username,
           type: CommandType.entryCreateExisting,
           status: CommandStatus.pending,
           data: {
@@ -1976,6 +1990,7 @@ class SettingsPageState extends State<SettingsPage> {
             'entry': Entry.toMap(finalEntry),
           },
           createdAt: DateTime.now().millisecondsSinceEpoch,
+          receivedDevices: {deviceID: "completed"}
         );
 
         await db.sendCommand(command);

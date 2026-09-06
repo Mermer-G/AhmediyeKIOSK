@@ -5,7 +5,7 @@ import 'package:app1/Pages/reasonsPage.dart';
 import 'package:app1/Pages/settings.dart';
 import 'package:app1/utils/database_models.dart';
 import 'package:app1/utils/debugger.dart';
-import 'package:app1/utils/operator_service.dart';
+import 'package:app1/utils/auth_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
@@ -180,9 +180,15 @@ class _MemberInfoPageState extends State<MemberInfoPage> {
     String? selectedReason = reasons.any((r) => r.name == HomePage.reason) ? HomePage.reason : null;
     String? selectedPermission = permisions.any((r) => r.name == HomePage.permission) ? HomePage.permission : null;
 
-    if(OperatorService.instance.currentOperator == null){
-      AppLogger.instance.error("Operator null!");
-      throw Exception("NO OPERATOR EXCEPTION");
+    if(AuthService.instance.currentUser != null){
+      if(AuthService.instance.currentUser!.role != UserRole.operator){
+        AppLogger.instance.error("User role is not operator!");
+        throw Exception("NO OPERATOR EXCEPTION");
+      }
+    }
+    else{
+      AppLogger.instance.error("User is null!");
+        throw Exception("NULL USER EXCEPTION");
     }
 
     final result = await showDialog<bool>(
@@ -325,9 +331,6 @@ class _MemberInfoPageState extends State<MemberInfoPage> {
                                 return;
                               }
 
-
-
-
                               //Entry datası oluşturulur. 
                               final entryID = _dbService.createPushID(); 
 
@@ -336,7 +339,7 @@ class _MemberInfoPageState extends State<MemberInfoPage> {
                                 group: member.group, 
                                 number: member.number, 
                                 name: member.name,
-                                operator: OperatorService.instance.currentUsername!,
+                                operator: AuthService.instance.currentUser!.username,
                                 exitTime: DateTime.now().toString(), 
                                 entryTime: null, 
                                 permission: selectedPermission, 

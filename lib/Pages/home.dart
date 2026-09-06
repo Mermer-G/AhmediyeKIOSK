@@ -1,11 +1,12 @@
 import 'package:app1/Pages/addMemberPage.dart';
 import 'package:app1/Pages/entryList.dart';
 import 'package:app1/Pages/generalStatusPage.dart';
-import 'package:app1/Pages/operatorManagement.dart';
+import 'package:app1/Pages/loginScreen.dart';
 import 'package:app1/Pages/passwordPage.dart';
 import 'package:app1/Pages/permissionPage.dart';
 import 'package:app1/Pages/reasonsPage.dart';
 import 'package:app1/Pages/memberInfo.dart';
+import 'package:app1/Pages/usermanagementPage.dart';
 import 'package:app1/utils/command.dart';
 import 'package:app1/utils/database_models.dart';
 import 'package:app1/utils/database_service.dart';
@@ -18,11 +19,17 @@ import 'package:hive_flutter/adapters.dart';
 import 'memberList.dart';
 import 'package:app1/Pages/queuePage.dart';
 import 'dart:async';
-import 'package:app1/utils/operator_service.dart';
+import 'package:app1/utils/auth_service.dart';
+import 'package:uuid/uuid.dart';
 
+final uuid = const Uuid();
+
+const deviceIDKey = 'deviceID';
+var deviceID = "";
 String settingsPassword = "365";
 int lastTimeStamp = 0;
 ValueNotifier membersValueListener = ValueNotifier<List<Member>>([]);
+
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -44,22 +51,25 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
 
-    operatorService = OperatorService.instance;
-
-    operatorService.addListener(_onOperatorChanged);
+    AuthService.instance.addListener(_authChanged);
 
     _initialize();
   }
-
-    void _onOperatorChanged() {
-      if (!mounted) return;
-
-      setState(() {});
-    }
   
+  void _authChanged() {
+    if (!AuthService.instance.isLoggedIn && mounted && !isInLoginScreen) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const LoginScreen(),
+        ),
+      );
+    }
+  }
+
   final List<String> logs = []; // Logların tutulduğu liste
   final CommandListener _commandListener = CommandListener();
-  late final OperatorService operatorService;
+  final AuthService authService = AuthService.instance;
 
   Future<void> _initialize() async {
     AppLogger.instance.log("INIT STARTED IN HOME PAGE");
@@ -103,16 +113,55 @@ class _HomePageState extends State<HomePage> {
       QueueHelper().syncQueue();
       AppLogger.instance.log("OFFLINE SYNC: Kuyruk senkronize edildi.");
 
-      if(!kIsWeb){
-        _commandListener.start();
-        AppLogger.instance.log("COMMAND LISTENER: Komutlar dinleniyor.");
+      deviceID = await getDeviceID();
+      AppLogger.instance.log("GOT DEVİCE ID: $deviceID",);
       
-        await operatorService.initialize(context);
-        
-        if (!operatorService.isLoggedIn && operatorService.hasOperators) {
-          await operatorService.showLoginScreen(context);
+      _commandListener.start();
+      AppLogger.instance.log("COMMAND LISTENER: Komutlar dinleniyor.",);
+
+      if (!authService.isLoggedIn && !isInLoginScreen) {
+        if (!kIsWeb) {
+          if (!await authService.hasAdmins) {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const FirstAdminScreen(),
+              ),
+            );
+          }
+
+          if (!authService.hasOperators) {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const FirstOperatorScreen(),
+              ),
+            );
+          }
+
+          if (!authService.isLoggedIn) {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const LoginScreen(),
+              ),
+            );
+          }
+
+          AppLogger.instance.log(
+            "Authentication sistemi devreye girdi.\n\n\n",
+          );
+        } else {
+          if (await authService.hasAdmins &&
+              !authService.isLoggedIn) {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const LoginScreen(),
+              ),
+            );
+          }
         }
-        AppLogger.instance.log("Operator service devreye girdi. \n \n \n");
       }
 
       AppLogger.instance.log("ALL INIT DONE - Uygulama hazır. \n \n \n");
@@ -192,6 +241,28 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<String> getDeviceID() async {
+    final box = Hive.box(metaBox);
+
+    final existingID = box.get(deviceIDKey);
+
+    if (existingID != null) {
+      return existingID.toString();
+    }
+
+    var newID = "";
+    if(kIsWeb){
+      newID = const Uuid().v4();
+    }
+    else{
+      newID = "MAIN";
+    }
+
+    await box.put(deviceIDKey, newID);
+
+    return newID;
+  }
+
   Future<void> _fetchMemberStateDataFromHive() async{
     try {
       AppLogger.instance.log('===== VERİ ÇEKME BAŞLADI: MemberState =====');
@@ -266,8 +337,7 @@ class _HomePageState extends State<HomePage> {
     _timer?.cancel();
     super.dispose();
     
-    operatorService.removeListener(_onOperatorChanged);
-    operatorService.dispose();
+    AuthService.instance.removeListener(_authChanged);
     
     if(!kIsWeb){
       _commandListener.stop();
@@ -294,13 +364,13 @@ class _HomePageState extends State<HomePage> {
       ),
 
       actions: [
-        if (operatorService.currentOperator != null)
+        if (authService.currentUser != null)
           Padding(
             padding: const EdgeInsets.only(right: 8),
 
             child: Center(
               child: Text(
-                operatorService.currentOperator!.username,
+                authService.currentUser!.username,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 14,
@@ -353,17 +423,88 @@ class _HomePageState extends State<HomePage> {
             );
           }
         ),
+        if(!kIsWeb)...[const SizedBox(height: 12),
+        _menuButton(
+          icon: Icons.sync,
+          text: "Sync Queue",
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const QueuePage(),
+              ),
+            );
+          },
+        ),
         const SizedBox(height: 12),
         _menuButton(
-          icon: Icons.settings,
-          text: "Ayarlar",
+          icon: Icons.person,
+          text: "Üye ekle",
           onTap: () {
-            AppLogger.instance.log("Ayarlar'a tıklandı.");
+            AppLogger.instance.log("Üye ekleye tıklandı.");
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => AddMemberPage()),
             );
           }
+        ),
+        const SizedBox(height: 12),
+        _menuButton(
+          icon: Icons.rule,
+          text: "Sebepler",
+          onTap: () {
+            AppLogger.instance.log("Sebepler menüsüne tıklandı.");
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => ReasonPage()),
+            );
+          }
+        ),
+        const SizedBox(height: 12),
+        _menuButton(
+          icon: Icons.check_box,
+          text: "İzinler",
+          onTap: () {
+            AppLogger.instance.log("İzinler menüsüne tıklandı.");
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => PermissionPage()),
+            );
+          }
+        ),
+        const SizedBox(height: 12),
+        _menuButton(
+          icon: Icons.person_2_outlined,
+          text: "Kullanıcı Bilgisi",
+          onTap: () {
+            AppLogger.instance.log("Operator menüsüne tıklandı.");
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => UserManagementScreen()),
+            );
+          }
+        ),],
+        const SizedBox(height: 12),
+        _menuButton(
+          icon: Icons.graphic_eq_rounded,
+          text: "Durum Bilgisi",
+          onTap: () {
+            AppLogger.instance.log("Durum menüsüne tıklandı.");
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => GeneralStatusPage()),
+            );
+          }
+        ),
+        const SizedBox(height: 12),
+        _menuButton(
+          icon: Icons.logout,
+          text: "Kullanıcı Çıkışı",
+          onTap: () async {
+            authService.logout();
+
+            if (!mounted) return;
+          },
         ),
       ],
     ) : 
@@ -406,55 +547,6 @@ class _HomePageState extends State<HomePage> {
             );
           }
         ),
-        
-        _menuButton(
-        icon: Icons.sync,
-        text: "Sync Queue",
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const QueuePage(),
-            ),
-          );
-        },
-      ),
-      
-        _menuButton(
-          icon: Icons.person,
-          text: "Üye ekle",
-          onTap: () {
-            AppLogger.instance.log("Üye ekleye tıklandı.");
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => AddMemberPage()),
-            );
-          }
-        ),
-        
-        _menuButton(
-          icon: Icons.rule,
-          text: "Sebepler",
-          onTap: () {
-            AppLogger.instance.log("Sebepler menüsüne tıklandı.");
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => ReasonPage()),
-            );
-          }
-        ),
-
-        _menuButton(
-          icon: Icons.check_box,
-          text: "İzinler",
-          onTap: () {
-            AppLogger.instance.log("İzinler menüsüne tıklandı.");
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => PermissionPage()),
-            );
-          }
-        ),
 
         _menuButton(
           icon: Icons.graphic_eq_rounded,
@@ -468,29 +560,81 @@ class _HomePageState extends State<HomePage> {
           }
         ),
 
+        if(!kIsWeb)...[
         _menuButton(
-          icon: Icons.person_2_outlined,
-          text: "Operator Bilgisi",
-          onTap: () {
-            AppLogger.instance.log("Operator menüsüne tıklandı.");
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => OperatorManagementScreen()),
-            );
-          }
-        ),
+        icon: Icons.sync,
+        text: "Sync Queue",
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const QueuePage(),
+            ),
+          );
+        },
+      ),
+      
+      _menuButton(
+        icon: Icons.rule,
+        text: "Sebepler",
+        onTap: () {
+          AppLogger.instance.log("Sebepler menüsüne tıklandı.");
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => ReasonPage()),
+          );
+        }
+      ),
 
-        _menuButton(
-          icon: Icons.logout,
-          text: "Operator Çıkışı",
-          onTap: () async {
-            operatorService.logout();
+      _menuButton(
+        icon: Icons.check_box,
+        text: "İzinler",
+        onTap: () {
+          AppLogger.instance.log("İzinler menüsüne tıklandı.");
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => PermissionPage()),
+          );
+        }
+      ),
+        if(authService.currentUser != null)...[
+          if(authService.currentUser!.role == UserRole.admin)...[
+            _menuButton(
+              icon: Icons.person_2_outlined,
+              text: "Kullanıcı Bilgisi",
+              onTap: () {
+                AppLogger.instance.log("Operator menüsüne tıklandı.");
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => UserManagementScreen()),
+                );
+              }
+            ),
+            
+            _menuButton(
+              icon: Icons.person,
+              text: "Üye ekle",
+              onTap: () {
+                AppLogger.instance.log("Üye ekleye tıklandı.");
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => AddMemberPage()),
+                );
+              }
+            ),
+          ]
+        ]
+      ],
 
-            if (!mounted) return;
+      _menuButton(
+        icon: Icons.logout,
+        text: "Kullanıcı Çıkışı",
+        onTap: () async {
+          authService.logout();
 
-            await operatorService.showLoginScreen(context);
-          },
-        ),
+          if (!mounted) return;
+        },
+      ),
       ],
     );
   }
