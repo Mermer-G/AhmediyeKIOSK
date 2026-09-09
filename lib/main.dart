@@ -1,4 +1,5 @@
-import 'package:app1/Pages/home.dart';
+import 'package:app1/Pages/new_home.dart';
+import 'package:app1/Theme/dashboard_theme.dart';
 import 'package:app1/utils/debugger.dart';
 import 'package:flutter/material.dart';
 import 'package:app1/utils/database_service.dart';
@@ -23,6 +24,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   AppLogger.instance.warn("Build Time: ${DateTime.now()}");
+  
+  
 
   AppLogger.navigatorKey = appNavigatorKey;
 
@@ -59,21 +62,21 @@ Future<void> initFirebaseSafe() async {
         options: firebaseOptions, // DEFAULT app
       );
 
-      AppLogger.instance.log("✅ First init success: $name");
+      AppLogger.instance.log("First init success: $name");
     } catch (e) {
-      AppLogger.instance.log("⚠️ First init failed: $e");
+      AppLogger.instance.log("First init failed: $e");
 
       // Eğer zaten varsa, al
       try {
         Firebase.app(name);
-        AppLogger.instance.log("ℹ️ App already exists, using existing: $name");
+        AppLogger.instance.log("ℹApp already exists, using existing: $name");
       } catch (_) {
         rethrow;
       }
     }
   } catch (e, stack) {
-    AppLogger.instance.log("⚠️ Outer init problem: $e");
-    AppLogger.instance.log("⚠️ Stack: $stack");
+    AppLogger.instance.log("Outer init problem: $e");
+    AppLogger.instance.log("Stack: $stack");
 
     // 2. deneme (force retry)
     try {
@@ -88,10 +91,28 @@ Future<void> initFirebaseSafe() async {
         options: firebaseOptions, // DEFAULT app
       );
 
-      AppLogger.instance.log("✅ Second init success: $name");
+      AppLogger.instance.log("Second init success: $name");
     } catch (e2) {
-      AppLogger.instance.log("❌ Firebase init totally failed: $e2");
+      AppLogger.instance.log("Firebase init totally failed: $e2");
     }
+  }
+}
+
+final routeObserver = AppRouteObserver();
+
+class AppRouteObserver extends NavigatorObserver {
+  String? currentRoute;
+
+  @override
+  void didPush(Route route, Route? previousRoute) {
+    currentRoute = route.settings.name;
+    super.didPush(route, previousRoute);
+  }
+
+  @override
+  void didPop(Route route, Route? previousRoute) {
+    currentRoute = previousRoute?.settings.name;
+    super.didPop(route, previousRoute);
   }
 }
 
@@ -101,11 +122,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      scrollBehavior: NoStretchScrollBehavior(),
       navigatorKey: appNavigatorKey,
+      navigatorObservers: [routeObserver],
       debugShowCheckedModeBanner: false,
       initialRoute: '/',
       routes: {
-        '/': (context) => const HomePage(),
+        '/': (context) => const NewHomePage(),
         '/debug': (context) => const DebugPage(),
       },
     );

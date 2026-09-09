@@ -1,9 +1,10 @@
+import 'package:app1/Theme/dashboard_theme.dart';
 import 'package:app1/utils/auth_service.dart';
+import 'package:app1/utils/database_models.dart';
 import 'package:app1/utils/database_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:app1/utils/database_models.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -43,8 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  
-  void _login() async{
+  void _login() async {
     final username = usernameController.text.trim();
     final password = passwordController.text;
 
@@ -68,29 +68,54 @@ class _LoginScreenState extends State<LoginScreen> {
     if (kIsWeb && user?.role != UserRole.admin) {
       AuthService.instance.logout();
 
-      // Hata mesajı göster
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Web paneline yalnızca yöneticiler giriş yapabilir.',
-          ),
-        ),
-      );
-
+      _showError('Web paneline yalnızca yöneticiler giriş yapabilir.');
       return;
     }
 
-    Navigator.pop(
-      context,
-      AuthService.instance.currentUser,
-    );
+    if (mounted) {
+      Navigator.pop(
+        context,
+        AuthService.instance.currentUser,
+      );
+    }
   }
 
   void _showError(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        backgroundColor: Colors.redAccent.withValues(alpha: 0.85),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        content: Text(
+          message,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
       ),
+    );
+  }
+
+  InputDecoration _buildInputDecoration({
+    required String labelText,
+    required IconData prefixIcon,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      labelText: labelText,
+      labelStyle: const TextStyle(color: GlassTheme.textSecondary, fontSize: 13),
+      prefixIcon: Icon(prefixIcon, color: GlassTheme.cyan, size: 20),
+      suffixIcon: suffixIcon,
+      filled: true,
+      fillColor: Colors.white.withValues(alpha: .04),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: .1)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: GlassTheme.cyan, width: 1.5),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     );
   }
 
@@ -99,69 +124,148 @@ class _LoginScreenState extends State<LoginScreen> {
     return PopScope(
       canPop: false,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Kullanıcı Girişi'),
-        ),
-        body: Center(
-          child: SizedBox(
-            width: 400,
-            child: Padding(
+        backgroundColor: Colors.transparent,
+        body: GlassBackground(
+          child: Center(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.person,
-                    size: 64,
-                  ),
+              child: SizedBox(
+                width: 400,
+                child: GlassPanel(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(height: 12),
 
-                  const SizedBox(height: 24),
-
-                  TextField(
-                    controller: usernameController,
-                    autofocus: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Kullanıcı adı',
-                      prefixIcon: Icon(Icons.person),
-                    ),
-                    textInputAction: TextInputAction.next,
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  TextField(
-                    controller: passwordController,
-                    obscureText: obscurePassword,
-                    decoration: InputDecoration(
-                      labelText: 'Şifre',
-                      prefixIcon: const Icon(Icons.lock),
-                      suffixIcon: IconButton(
-                        onPressed: () {
-                          setState(() {
-                            obscurePassword =
-                                !obscurePassword;
-                          });
-                        },
-                        icon: Icon(
-                          obscurePassword
-                              ? Icons.visibility
-                              : Icons.visibility_off,
+                      // Gradient Icon Header
+                      Container(
+                        width: 70,
+                        height: 70,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            colors: [GlassTheme.cyan, GlassTheme.purple],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: GlassTheme.cyan.withValues(alpha: .45),
+                              blurRadius: 20,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.lock_person_rounded,
+                          size: 36,
+                          color: Colors.white,
                         ),
                       ),
-                    ),
-                    onSubmitted: (_) => _login(),
-                  ),
 
-                  const SizedBox(height: 24),
+                      const SizedBox(height: 16),
 
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _login,
-                      child: const Text('Giriş Yap'),
-                    ),
+                      // Header Text
+                      const Text(
+                        'Kullanıcı Girişi',
+                        style: TextStyle(
+                          color: GlassTheme.textPrimary,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: .5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Devam etmek için hesabınıza giriş yapın.',
+                        style: TextStyle(
+                          color: GlassTheme.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+
+                      const SizedBox(height: 28),
+
+                      // Username Input
+                      TextField(
+                        controller: usernameController,
+                        autofocus: true,
+                        style: const TextStyle(color: GlassTheme.textPrimary, fontSize: 14),
+                        textInputAction: TextInputAction.next,
+                        decoration: _buildInputDecoration(
+                          labelText: 'Kullanıcı adı',
+                          prefixIcon: Icons.person_outline_rounded,
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Password Input
+                      TextField(
+                        controller: passwordController,
+                        obscureText: obscurePassword,
+                        style: const TextStyle(color: GlassTheme.textPrimary, fontSize: 14),
+                        decoration: _buildInputDecoration(
+                          labelText: 'Şifre',
+                          prefixIcon: Icons.lock_outline_rounded,
+                          suffixIcon: IconButton(
+                            onPressed: () {
+                              setState(() {
+                                obscurePassword = !obscurePassword;
+                              });
+                            },
+                            icon: Icon(
+                              obscurePassword
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              color: GlassTheme.textSecondary,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                        onSubmitted: (_) => _login(),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Submit Button
+                      Container(
+                        width: double.infinity,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          gradient: const LinearGradient(
+                            colors: [GlassTheme.cyan, GlassTheme.purple],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: GlassTheme.cyan.withValues(alpha: .3),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          onPressed: _login,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Giriş Yap',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),

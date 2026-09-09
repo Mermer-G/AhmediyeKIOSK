@@ -162,7 +162,7 @@ class Synchronizer {
     // ─────────────────────────────
 
     try {
-      AppLogger.instance.log("📥 Fetching MemberState...");
+      AppLogger.instance.log("Fetching MemberState...");
 
       final snapshot = await memberStateRef.get();
 
@@ -172,7 +172,7 @@ class Synchronizer {
         totalBytes += bytes;
 
         AppLogger.instance.log(
-          "📦 MemberState Download Size: $bytes bytes",
+          "MemberState Download Size: $bytes bytes",
         );
 
         final data = snapshot.value;
@@ -203,7 +203,7 @@ class Synchronizer {
           }
 
           AppLogger.instance.log(
-            "✅ Loaded $count member states.",
+            "Loaded $count member states.",
           );
         } else {
           AppLogger.instance.error(
@@ -230,7 +230,7 @@ class Synchronizer {
 
     try {
       AppLogger.instance.log(
-        "📥 Fetching last $entryPullLimit entries...",
+        "Fetching last $entryPullLimit entries...",
       );
 
       final snapshot = await entriesRef
@@ -244,7 +244,7 @@ class Synchronizer {
         totalBytes += bytes;
 
         AppLogger.instance.log(
-          "📦 Entries Download Size: $bytes bytes",
+          "Entries Download Size: $bytes bytes",
         );
 
         final data = snapshot.value;
@@ -272,7 +272,7 @@ class Synchronizer {
           }
 
           AppLogger.instance.log(
-            "✅ Loaded $count entries.",
+            "Loaded $count entries.",
           );
         } else {
           AppLogger.instance.error(
@@ -299,7 +299,7 @@ class Synchronizer {
 
     try {
       AppLogger.instance.log(
-        "📥 Fetching Members...",
+        "Fetching Members...",
       );
 
       final snapshot = await memberRef.get();
@@ -310,7 +310,7 @@ class Synchronizer {
         totalBytes += bytes;
 
         AppLogger.instance.log(
-          "📦 Members Download Size: $bytes bytes",
+          "Members Download Size: $bytes bytes",
         );
 
         final data = snapshot.value;
@@ -340,7 +340,7 @@ class Synchronizer {
           lastUpdateTime = DateTime.now();
 
           AppLogger.instance.log(
-            "✅ Loaded $count members.",
+            "Loaded $count members.",
           );
         } else {
           AppLogger.instance.error(
@@ -366,16 +366,16 @@ class Synchronizer {
     // ─────────────────────────────
 
     AppLogger.instance.log(
-      "📊 TOTAL DOWNLOAD: $totalBytes bytes",
+      "TOTAL DOWNLOAD: $totalBytes bytes",
     );
 
     AppLogger.instance.log(
-      "📊 TOTAL DOWNLOAD: "
+      "TOTAL DOWNLOAD: "
       "${(totalBytes / 1024).toStringAsFixed(2)} KB",
     );
 
     AppLogger.instance.log(
-      "📊 TOTAL DOWNLOAD: "
+      "TOTAL DOWNLOAD: "
       "${(totalBytes / (1024 * 1024)).toStringAsFixed(4)} MB",
     );
 

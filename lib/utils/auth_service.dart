@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:app1/Theme/dashboard_theme.dart';
 import 'package:app1/utils/database_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -52,7 +53,9 @@ class AuthService extends ChangeNotifier {
             user.password == password) {
           _currentUser = user;
 
-          notifyListeners();
+          if(!kIsWeb){
+            notifyListeners();
+          }
 
           return true;
         }
@@ -195,17 +198,16 @@ class FirstOperatorScreen extends StatefulWidget {
   const FirstOperatorScreen({super.key});
 
   @override
-  State<FirstOperatorScreen> createState() =>
-      _FirstOperatorScreenState();
+  State<FirstOperatorScreen> createState() => _FirstOperatorScreenState();
 }
 
-class _FirstOperatorScreenState
-    extends State<FirstOperatorScreen> {
-
+class _FirstOperatorScreenState extends State<FirstOperatorScreen> {
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
 
-  void _createOperator() async {
+  bool _loading = false;
+
+  Future<void> _createOperator() async {
     final username = usernameController.text.trim();
     final password = passwordController.text;
 
@@ -213,18 +215,34 @@ class _FirstOperatorScreenState
       return;
     }
 
-    final user = User(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      username: username,
-      password: password,
-      role: UserRole.operator,
-    );
+    setState(() => _loading = true);
 
-    await AuthService.instance.createUser(user);
+    try {
+      final user = User(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        username: username,
+        password: password,
+        role: UserRole.operator,
+      );
 
-    if (!mounted) return;
+      await AuthService.instance.createUser(user);
 
-    Navigator.pop(context);
+      if (!mounted) return;
+
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Operatör oluşturulamadı: $e'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    }
   }
 
   @override
@@ -239,40 +257,134 @@ class _FirstOperatorScreenState
     return PopScope(
       canPop: false,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('İlk Operatörü Oluştur'),
-        ),
-        body: Center(
-          child: SizedBox(
-            width: 400,
-            child: Padding(
+        backgroundColor: GlassTheme.background,
+        body: GlassBackground(
+          child: Center(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: usernameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Kullanıcı adı',
-                    ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: 420,
+                ),
+                child: GlassPanel(
+                  title: 'İlk Operatörü Oluştur',
+                  subtitle: 'Sistemi kullanmaya başlamak için operatör hesabı oluşturun',
+                  icon: Icons.person_add_alt_1_rounded,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextField(
+                        controller: usernameController,
+                        style: const TextStyle(
+                          color: GlassTheme.textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: 'Kullanıcı adı',
+                          labelStyle: const TextStyle(
+                            color: GlassTheme.textSecondary,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.person_outline_rounded,
+                            color: GlassTheme.cyan,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: .04),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.white.withValues(alpha: .08),
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.white.withValues(alpha: .08),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: GlassTheme.cyan.withValues(alpha: .6),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      TextField(
+                        controller: passwordController,
+                        obscureText: true,
+                        style: const TextStyle(
+                          color: GlassTheme.textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: 'Şifre',
+                          labelStyle: const TextStyle(
+                            color: GlassTheme.textSecondary,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.lock_outline_rounded,
+                            color: GlassTheme.purple,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: .04),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.white.withValues(alpha: .08),
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.white.withValues(alpha: .08),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: GlassTheme.purple.withValues(alpha: .6),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 22),
+
+                      SizedBox(
+                        height: 46,
+                        child: ElevatedButton(
+                          onPressed: _loading ? null : _createOperator,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: GlassTheme.cyan,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor:
+                                GlassTheme.cyan.withValues(alpha: .35),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: _loading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text(
+                                  'Operatör Oluştur',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Şifre',
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _createOperator,
-                      child: const Text('Operatör Oluştur'),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -290,17 +402,16 @@ class FirstAdminScreen extends StatefulWidget {
   const FirstAdminScreen({super.key});
 
   @override
-  State<FirstAdminScreen> createState() =>
-      _FirstAdminScreenState();
+  State<FirstAdminScreen> createState() => _FirstAdminScreenState();
 }
 
-class _FirstAdminScreenState
-    extends State<FirstAdminScreen> {
-
+class _FirstAdminScreenState extends State<FirstAdminScreen> {
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
 
-  void _createAdmin() async {
+  bool _loading = false;
+
+  Future<void> _createAdmin() async {
     final username = usernameController.text.trim();
     final password = passwordController.text;
 
@@ -308,18 +419,34 @@ class _FirstAdminScreenState
       return;
     }
 
-    final user = User(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      username: username,
-      password: password,
-      role: UserRole.admin,
-    );
+    setState(() => _loading = true);
 
-    await AuthService.instance.createUser(user);
+    try {
+      final user = User(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        username: username,
+        password: password,
+        role: UserRole.admin,
+      );
 
-    if (!mounted) return;
+      await AuthService.instance.createUser(user);
 
-    Navigator.pop(context);
+      if (!mounted) return;
+
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Yönetici oluşturulamadı: $e'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    }
   }
 
   @override
@@ -334,40 +461,134 @@ class _FirstAdminScreenState
     return PopScope(
       canPop: false,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('İlk Yöneticiyi Oluştur'),
-        ),
-        body: Center(
-          child: SizedBox(
-            width: 400,
-            child: Padding(
+        backgroundColor: GlassTheme.background,
+        body: GlassBackground(
+          child: Center(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: usernameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Kullanıcı adı',
-                    ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: 420,
+                ),
+                child: GlassPanel(
+                  title: 'İlk Yönetici Oluştur',
+                  subtitle: 'Sistem yönetimi için yönetici hesabı oluşturun',
+                  icon: Icons.admin_panel_settings_outlined,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextField(
+                        controller: usernameController,
+                        style: const TextStyle(
+                          color: GlassTheme.textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: 'Kullanıcı adı',
+                          labelStyle: const TextStyle(
+                            color: GlassTheme.textSecondary,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.person_outline_rounded,
+                            color: GlassTheme.cyan,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: .04),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.white.withValues(alpha: .08),
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.white.withValues(alpha: .08),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: GlassTheme.cyan.withValues(alpha: .6),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      TextField(
+                        controller: passwordController,
+                        obscureText: true,
+                        style: const TextStyle(
+                          color: GlassTheme.textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: 'Şifre',
+                          labelStyle: const TextStyle(
+                            color: GlassTheme.textSecondary,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.lock_outline_rounded,
+                            color: GlassTheme.purple,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: .04),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.white.withValues(alpha: .08),
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.white.withValues(alpha: .08),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: GlassTheme.purple.withValues(alpha: .6),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 22),
+
+                      SizedBox(
+                        height: 46,
+                        child: ElevatedButton(
+                          onPressed: _loading ? null : _createAdmin,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: GlassTheme.cyan,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor:
+                                GlassTheme.cyan.withValues(alpha: .35),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: _loading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text(
+                                  'Yönetici Oluştur',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Şifre',
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _createAdmin,
-                      child: const Text('Yönetici Oluştur'),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),

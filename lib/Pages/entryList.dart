@@ -1,6 +1,7 @@
 import 'package:app1/Pages/entryInfo.dart';
 import 'package:app1/Pages/settings.dart';
 import 'package:app1/Pages/memberList.dart';
+import 'package:app1/Theme/dashboard_theme.dart';
 import 'package:app1/utils/database_models.dart';
 import 'package:app1/utils/database_service.dart';
 import 'package:app1/utils/debugger.dart';
@@ -18,388 +19,974 @@ class _entryListerPageState extends State<entryListerPage> {
   List<Entry> entries = [];
   List<Entry> shownEntries = [];
 
-  bool _isLoading = true;
+  bool _isLoading = false;
   String? _errorMessage;
-  // Bu metod çağrılır sıralama butonuna basıldığında
+
   int _sortColumnIndex = 2;
   bool _sortAscending = false;
-  
-  late List<DataColumn> _columns;
- List<DataRow> _rows = [];
 
-  //filter text fields
-  final groupController = TextEditingController();
-  final numberController = TextEditingController();
-  final exitTimeController = TextEditingController();
-  final loadAmountController = TextEditingController();
+  late List<DataColumn> _columns;
+  List<DataRow> _rows = [];
+
+  final TextEditingController groupController =
+      TextEditingController();
+
+  final TextEditingController numberController =
+      TextEditingController();
+
+  final TextEditingController exitTimeController =
+      TextEditingController();
+
+  final TextEditingController loadAmountController =
+      TextEditingController();
+
   String groupFilter = "";
   String numberFilter = "";
   String exitTimeFilter = "";
+
   int loadAmount = 50;
   int loadedDataAmount = 0;
 
   @override
   void initState() {
     super.initState();
-    _fetchDataFromHive();
+
     loadAmountController.text = loadAmount.toString();
+
+    _fetchDataFromHive();
   }
 
-  Future<void> _fetchDataFromHive() async{
+  @override
+  void dispose() {
+    groupController.dispose();
+    numberController.dispose();
+    exitTimeController.dispose();
+    loadAmountController.dispose();
+
+    super.dispose();
+  }
+
+  Future<void> _fetchDataFromHive() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
     try {
-      setState(() {
-        _isLoading = true;
-      });
-      AppLogger.instance.log('===== VERİ ÇEKME BAŞLADI: Entry =====');
       final box = Hive.box(entryBox);
 
-      AppLogger.instance.log("Box entry count: ${box.length}");
-      final latest = box.keys.toList()
-        ..sort((a, b) => int.parse(b).compareTo(int.parse(a)));
+      final keys = box.keys.toList();
 
-      // entries.clear();
-      // entries = latest.take(loadAmount)
-      //   .map((k) => Entry.fromMap(box.get(k)))
-      //   .toList();
+      keys.sort((a, b) {
+        final aInt = int.tryParse(a.toString()) ?? 0;
+        final bInt = int.tryParse(b.toString()) ?? 0;
 
-      entries = latest.take(loadAmount)
-        .map((k) {
-          final value = box.get(k);
-          AppLogger.instance.log("KEY: $k VALUE: $value");
-          return Entry.fromMap(value);
-        })
-        .toList();
-      
-      loadedDataAmount = entries.length;
-      AppLogger.instance.log("Entry count: $loadedDataAmount ");
-      
-      //This is just for testing shown data will be set in somewhere different.
-      // convertValuesToListItems();
+        return bInt.compareTo(aInt);
+      });
+
+      final selectedKeys =
+          keys.take(loadAmount).toList();
+
+      final List<Entry> loadedEntries = [];
+
+      for (final key in selectedKeys) {
+        final value = box.get(key);
+
+        if (value != null) {
+          loadedEntries.add(
+            Entry.fromMap(
+              Map<dynamic, dynamic>.from(value),
+            ),
+          );
+        }
+      }
+
       setState(() {
+        entries = loadedEntries;
+        loadedDataAmount = loadedEntries.length;
         _isLoading = false;
       });
-    } 
-      
-    catch (e) {
+
+      convertValuesToListItems();
+    } catch (e) {
       setState(() {
-        _errorMessage = 'Veri yüklenemedi. Veri tabanından resetlemeyi deneyin.';
+        _errorMessage = e.toString();
         _isLoading = false;
       });
     }
   }
 
-  List<Entry> parseToEntries(Object? raw){
-    List<Entry> returnList = [];
+  List<Entry> parseToEntries(List<dynamic> values) {
+    final List<Entry> result = [];
 
-    if(raw is Map){
-      //Here keys are nodeKeys(IDs) of members and the values are value blocks A1 : {Dorm:..., Name:...}
-      Map<String, dynamic> stringMap = raw.map((key,value) => MapEntry(key.toString(), value));
-      returnList = parseToDataType(stringMap, Entry.fromMap);
+    for (final value in values) {
+      if (value != null) {
+        result.add(
+          Entry.fromMap(
+            Map<dynamic, dynamic>.from(value),
+          ),
+        );
+      }
     }
 
-    else{
-      //TODO: Throw error
-    }
-
-    return returnList;
+    return result;
   }
 
   void convertValuesToListItems() {
-    applyFilterAndSort(numberFilter, groupFilter, exitTimeFilter);
-  
-    // We need columns and rows
-    //Columns:
-    _columns = Entry.columns(setSortingFields);
-  
-    //Rows:
-    _rows.clear();
-    //For rows we need to create dataCells
-    int numberOfmembers = 0;
-    shownEntries.forEach((entry) {
-      numberOfmembers++;
-      _rows.add(DataRow(
-        onSelectChanged: (selected) async {
-          if (selected == true) {
-            await Navigator.push(context, MaterialPageRoute(builder: (context) => EntryInfoPage(entry: entry))); // yeni info page gelecek buraya.
-            setState(() {});       
-          }
-        },
-        cells: [
-        DataCell(Text(entry.group)),  
-        DataCell(Text(entry.number.toString())), 
-        if (DateTime.tryParse(entry.exitTime) != null)
-          DataCell(Text(formatDateTime(DateTime.tryParse(entry.exitTime)!)))],
+    applyFilterAndSort(
+      numberFilter,
+      groupFilter,
+      exitTimeFilter,
+    );
 
-        color: WidgetStateProperty.resolveWith((states) {
-        // entryTime default value mu?
-        if (entry.entryTime == "Daha giriş yapılmamış") {
-          return Colors.red.shade100;
-        }
+    _columns = Entry.columns(
+      setSortingFields,
+    );
 
-        // widget selected mi?
-        if (states.contains(WidgetState.selected)) {
-          return Colors.blue.shade50;
-        }
+    _rows = shownEntries.map((entry) {
+      Color? rowColor;
 
-        // default
-        return Colors.grey.shade100;
-      }),
-      ));
-    });
-    _isLoading = false;
-    AppLogger.instance.log("Number of members in the table: $numberOfmembers");
-  
-  }
-
-  void setAmountAndReload() async{
-    setState(() {
-      var value = int.tryParse(loadAmountController.text);
-      if (value != null ){
-        loadAmount = value;
-        _fetchDataFromHive();
+      if (entry.entryTime ==
+          "Daha giriş yapılmamış") {
+        rowColor = Colors.red.withOpacity(1);
       }
+
+      return DataRow(
+        color: rowColor == null
+            ? null
+            : WidgetStateProperty.all(rowColor),
+        cells: [
+          DataCell(
+            Text(
+              entry.group.toString(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          DataCell(
+            Text(
+              entry.number.toString(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          DataCell(
+            Text(
+              formatDateTime(
+                DateTime.tryParse(
+                      entry.exitTime.toString(),
+                    ) ??
+                    DateTime.now(),
+              ),
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+        onSelectChanged: (_) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  EntryInfoPage(entry: entry),
+            ),
+          );
+        },
+      );
+    }).toList();
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void setAmountAndReload() {
+    final value =
+        int.tryParse(loadAmountController.text);
+
+    if (value == null || value <= 0) {
+      return;
+    }
+
+    loadAmount = value;
+
+    _fetchDataFromHive();
+  }
+
+  void applyFilterAndSort(
+    String numberF,
+    String groupF,
+    String exitTimeF,
+  ) {
+    shownEntries = List<Entry>.from(entries);
+
+    if (groupF.isNotEmpty) {
+      shownEntries = shownEntries.where((entry) {
+        return entry.group
+            .toString()
+            .toLowerCase()
+            .contains(groupF.toLowerCase());
+      }).toList();
+    }
+
+    if (numberF.isNotEmpty) {
+      shownEntries = shownEntries.where((entry) {
+        return entry.number
+            .toString()
+            .toLowerCase()
+            .contains(numberF.toLowerCase());
+      }).toList();
+    }
+
+    if (exitTimeF.isNotEmpty) {
+      shownEntries = shownEntries.where((entry) {
+        return entry.exitTime
+            .toString()
+            .toLowerCase()
+            .contains(exitTimeF.toLowerCase());
+      }).toList();
+    }
+
+    shownEntries.sort((a, b) {
+      dynamic aValue;
+      dynamic bValue;
+
+      switch (_sortColumnIndex) {
+        case 0:
+          aValue = a.group;
+          bValue = b.group;
+          break;
+
+        case 1:
+          aValue = a.number;
+          bValue = b.number;
+          break;
+
+        case 2:
+          aValue = a.exitTime;
+          bValue = b.exitTime;
+          break;
+
+        default:
+          return 0;
+      }
+
+      int result;
+
+      if (aValue is num && bValue is num) {
+        result = aValue.compareTo(bValue);
+      } else {
+        result = aValue
+            .toString()
+            .compareTo(bValue.toString());
+      }
+
+      return _sortAscending ? result : -result;
     });
   }
 
-  void applyFilterAndSort(String numberF, String groupF, String exitTimeF) {
-    //Filter
-    shownEntries = entries;    
-    if (groupF.isNotEmpty){
-      shownEntries = shownEntries.where((entry) => entry.group.toString().toLowerCase().contains(groupF.toLowerCase())).toList();
-    }
-    if (numberF.isNotEmpty){
-      shownEntries = shownEntries.where((entry) => entry.number.toString().toLowerCase().contains(numberF.toLowerCase())).toList();
-    }
-    if (exitTimeF.isNotEmpty){
-      shownEntries = shownEntries.where((entry) => entry.exitTime.toString().toLowerCase().contains(exitTimeF.toLowerCase())).toList();
-    }
-    
-
-    //Sort
-    switch (_sortColumnIndex) {
-      case 0:
-        if (_sortAscending){
-          shownEntries.sort((a,b) => a.group.toLowerCase().compareTo(b.group.toLowerCase()));
-        }
-        else{
-          shownEntries.sort((a,b) => b.group.toLowerCase().compareTo(a.group.toLowerCase()));
-        }
-        break;
-      case 1:
-        if (_sortAscending){
-          shownEntries.sort((a,b) => a.number.compareTo(b.number));
-        }
-        else{
-          shownEntries.sort((a,b) => b.number.compareTo(a.number));
-        }
-        break;
-      case 2:
-        if (_sortAscending){
-          shownEntries.sort((a, b) => DateTime.parse(a.exitTime).compareTo(DateTime.parse(b.exitTime)));
-        }
-        else{
-          shownEntries.sort((a, b) => DateTime.parse(b.exitTime).compareTo(DateTime.parse(a.exitTime)));
-        }
-        break;
-    }
-
-  }
-
-  void setSortingFields(int sortingColumnIndex, bool sortAscending){
+  void setSortingFields(
+    int columnIndex,
+    bool ascending,
+  ) {
     setState(() {
-      _sortColumnIndex = sortingColumnIndex;
-      _sortAscending = sortAscending;
+      _sortColumnIndex = columnIndex;
+      _sortAscending = ascending;
+
+      convertValuesToListItems();
     });
-    AppLogger.instance.log("Tapped! index: ${sortingColumnIndex}, ascending: ${sortAscending} ");
   }
 
-  DataTable drawtable() {
-    convertValuesToListItems();
-    return DataTable(
-      sortColumnIndex: _sortColumnIndex,
-      sortAscending: _sortAscending,
-      showCheckboxColumn: false,
-      headingRowColor: WidgetStateColor.resolveWith(
-        (states) => Colors.blueGrey.shade100,
+  Widget drawtable() {
+    if (_isLoading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(40),
+          child: CircularProgressIndicator(
+            color: GlassTheme.cyan,
+            strokeWidth: 2,
+          ),
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.error_outline_rounded,
+                color: Colors.redAccent,
+                size: 32,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_rows.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.inbox_outlined,
+                color: GlassTheme.textSecondary,
+                size: 32,
+              ),
+              SizedBox(height: 12),
+              Text(
+                'Gösterilecek kayıt bulunamadı.',
+                style: TextStyle(
+                  color: GlassTheme.textSecondary,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Scrollbar(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          sortColumnIndex: _sortColumnIndex,
+          sortAscending: _sortAscending,
+          showCheckboxColumn: false,
+          headingRowHeight: 42,
+          dataRowMinHeight: 48,
+          dataRowMaxHeight: 58,
+          columnSpacing: 28,
+          horizontalMargin: 12,
+          dividerThickness: 0.3,
+          headingTextStyle: const TextStyle(
+            color: Colors.white70,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+          dataTextStyle: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+          ),
+          headingRowColor:
+              WidgetStateProperty.all(
+            Colors.white.withOpacity(0.035),
+          ),
+          columns: _columns,
+          rows: _rows,
+        ),
       ),
-      dataRowColor: WidgetStateColor.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return Colors.blue.shade50;
-        }
-        return Colors.grey.shade100;
-      }),
-      headingTextStyle: const TextStyle(
-        fontWeight: FontWeight.bold,
-        fontSize: 15,
-        color: Colors.black87,
+    );
+  }
+
+  InputDecoration _inputDecoration(
+    String label,
+    IconData icon,
+  ) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(
+        color: Colors.white70,
+        fontSize: 12,
       ),
-      dataTextStyle: const TextStyle(
-        fontSize: 14,
-        color: Colors.black87,
+      floatingLabelStyle: const TextStyle(
+        color: GlassTheme.cyan,
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
       ),
-      columnSpacing: 30,
-      horizontalMargin: 16,
-      dividerThickness: 1.2,
-      columns: _columns,
-      rows: _rows,
+      prefixIcon: Icon(
+        icon,
+        size: 18,
+        color: Colors.white70,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(11),
+        borderSide: BorderSide(
+          color: Colors.white.withOpacity(0.11),
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(11),
+        borderSide: const BorderSide(
+          color: GlassTheme.cyan,
+          width: 1.1,
+        ),
+      ),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 13,
+      ),
+    );
+  }
+
+  Widget _buildDateFilterField() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(11),
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.now(),
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime(2100),
+                  builder: (context, child) {
+                    return Theme(
+                      data: Theme.of(context).copyWith(
+                        colorScheme: const ColorScheme.dark(
+                          surface: Color(0xFF101827),
+                          primary: GlassTheme.cyan,
+                          onPrimary: Colors.black,
+                          onSurface: Colors.white,
+                        ),
+                        datePickerTheme:
+                            DatePickerThemeData(
+                          backgroundColor:
+                              const Color(0xFF101827),
+                          headerBackgroundColor:
+                              const Color(0xFF101827),
+                          headerForegroundColor:
+                              Colors.white,
+                          surfaceTintColor:
+                              Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(20),
+                            side: BorderSide(
+                              color: Colors.white
+                                  .withOpacity(0.10),
+                            ),
+                          ),
+                          dayForegroundColor:
+                              WidgetStateProperty.all(
+                            Colors.white,
+                          ),
+                          weekdayStyle:
+                              const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          dayStyle:
+                              const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                          ),
+                          todayForegroundColor:
+                              WidgetStateProperty.all(
+                            GlassTheme.cyan,
+                          ),
+                          todayBackgroundColor:
+                              WidgetStateProperty.all(
+                            GlassTheme.cyan
+                                .withOpacity(0.10),
+                          ),
+                          yearStyle:
+                              const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      child: child!,
+                    );
+                  },
+                );
+
+                if (picked == null) return;
+
+                final formatted =
+                  '${picked.year}-'
+                  '${picked.month.toString().padLeft(2, '0')}-'
+                  '${picked.day.toString().padLeft(2, '0')}';
+
+                setState(() {
+                  exitTimeFilter = formatted;
+                  exitTimeController.text = formatted;
+                  convertValuesToListItems();
+                });
+              },
+              child: Container(
+                height: 48,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.025),
+                  borderRadius: BorderRadius.circular(11),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.11),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.calendar_today_rounded,
+                      size: 18,
+                      color: Colors.white70,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        exitTimeController.text.isEmpty
+                            ? 'Çıkış tarihi'
+                            : exitTimeController.text,
+                        style: TextStyle(
+                          color: exitTimeController
+                                  .text.isEmpty
+                              ? Colors.white70
+                              : Colors.white,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                    const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: Colors.white54,
+                      size: 20,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          if (exitTimeController.text.isNotEmpty) ...[
+            const SizedBox(width: 6),
+            IconButton(
+              onPressed: () {
+                setState(() {
+                  exitTimeController.clear();
+                  exitTimeFilter = "";
+                  convertValuesToListItems();
+                });
+              },
+              icon: const Icon(
+                Icons.close_rounded,
+                size: 18,
+                color: Colors.white54,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterField({
+    required String label,
+    required IconData icon,
+    required TextEditingController controller,
+    required ValueChanged<String> onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: controller,
+        onChanged: onChanged,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 13,
+        ),
+        cursorColor: GlassTheme.cyan,
+        decoration: _inputDecoration(
+          label,
+          icon,
+        ),
+      ),
     );
   }
 
   Widget _buildFilterPanel() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment:
+          CrossAxisAlignment.stretch,
       children: [
-        FilterTextField(
-          title: "Numaraya Gore",
-          controller: numberController,
-          onChanged: (value) => setState(() => numberFilter = value),
+        const Text(
+          'Filtreler',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        FilterTextField(
-          title: "Gruba Gore",
+        const SizedBox(height: 14),
+
+        _buildFilterField(
+          label: 'Grouba göre',
+          icon: Icons.groups_rounded,
           controller: groupController,
-          onChanged: (value) => setState(() => groupFilter = value),
-        ),
-        FilterTextField(
-          title: "Cikis Tarihine Gore",
-          controller: exitTimeController,
-          onChanged: (value) => setState(() => exitTimeFilter = value),
-        ),
-        const SizedBox(height: 8),
-        ElevatedButton(
-          onPressed: () {
-            groupController.clear();
-            numberController.clear();
-            exitTimeController.clear();
+          onChanged: (value) {
             setState(() {
-              groupFilter = "";
-              numberFilter = "";
-              exitTimeFilter = "";
+              groupFilter = value;
+              convertValuesToListItems();
             });
           },
-          child: const Text("Filtreleri temizle"),
         ),
-        const SizedBox(height: 8),
-        Center(child: Text("Listede gösterilen veri miktarı:")),
+
+        _buildFilterField(
+          label: 'Numaraya göre',
+          icon: Icons.tag_rounded,
+          controller: numberController,
+          onChanged: (value) {
+            setState(() {
+              numberFilter = value;
+              convertValuesToListItems();
+            });
+          },
+        ),
+
+        _buildDateFilterField(),
+
+        const SizedBox(height: 6),
+
         Row(
           children: [
             Expanded(
-              child: TextField(
+              child: _buildFilterField(
+                label: 'Kayıt miktarı',
+                icon: Icons.format_list_numbered_rounded,
                 controller: loadAmountController,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                ),
+                onChanged: (_) {},
               ),
             ),
-
-            const SizedBox(width: 12),
-
-            ElevatedButton(
-              onPressed: setAmountAndReload,
-              child: const Text("Kaydet"),
+            const SizedBox(width: 8),
+            Padding(
+              padding:
+                  const EdgeInsets.only(bottom: 12),
+              child: _GlassActionButton(
+                icon: Icons.refresh_rounded,
+                label: 'Yükle',
+                onPressed: setAmountAndReload,
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        Center(child: Text("Yüklenen veri adedi: $loadedDataAmount")),
+
+        const SizedBox(height: 4),
+
+        Row(
+          children: [
+            const Icon(
+              Icons.storage_rounded,
+              size: 15,
+              color: Colors.white54,
+            ),
+            const SizedBox(width: 7),
+            Text(
+              '$loadedDataAmount kayıt yüklendi',
+              style: const TextStyle(
+                color: Colors.white60,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 16),
+
+        _GlassActionButton(
+          icon: Icons.filter_alt_off_rounded,
+          label: 'Filtreleri Temizle',
+          onPressed: () {
+            setState(() {
+              groupController.clear();
+              numberController.clear();
+              exitTimeController.clear();
+
+              groupFilter = "";
+              numberFilter = "";
+              exitTimeFilter = "";
+
+              convertValuesToListItems();
+            });
+          },
+        ),
       ],
     );
   }
 
   Widget _buildFilterSidebar() {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Container(
-          width: double.infinity,
-          height: double.infinity,
-          decoration: BoxDecoration(
-            color: const Color.fromARGB(255, 228, 228, 228),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(8),
-            child: _buildFilterPanel(),
-          ),
-        ),
-      ),
+    return GlassPanel(
+      title: 'Filtre ve Veri',
+      icon: Icons.tune_rounded,
+      child: _buildFilterPanel(),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Center(child: CircularProgressIndicator());
-    }
-
-    if (_errorMessage != null) {
-      return Center(child: Text(_errorMessage!));
-    }
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        
-        final bool isWide = constraints.maxWidth > 700;
-
-        return Scaffold(
-          appBar: AppBar(title: const Text('Giris-Cikis Listesi')),
-          body: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 50),
-            child: Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: !isWide
-              ? Column(
+    return GlassBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              20,
+              14,
+              20,
+              20,
+            ),
+            child: Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
+              children: [
+                // HEADER
+                Row(
                   children: [
-                    ExpansionTile(
-                      title: const Text("Filtreler"),
-                      leading: const Icon(Icons.filter_list),
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: _buildFilterPanel(),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-                    ),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.vertical,
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: drawtable(),
-                        ),
+                    IconButton(
+                      onPressed: () =>
+                          Navigator.of(context).pop(),
+                      icon: const Icon(
+                        Icons.arrow_back_rounded,
+                        color:
+                            GlassTheme.textPrimary,
                       ),
                     ),
-                  ],
-                )
-              : Row(
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: Align(
-                        alignment: Alignment.topCenter,
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.vertical,
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: drawtable(),
+                    const SizedBox(width: 4),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Giriş - Çıkış Listesi',
+                            style: TextStyle(
+                              color: GlassTheme
+                                  .textPrimary,
+                              fontSize: 21,
+                              fontWeight:
+                                  FontWeight.bold,
+                            ),
                           ),
-                        ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Geçmiş giriş ve çıkış kayıtları',
+                            style: TextStyle(
+                              color: GlassTheme
+                                  .textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    Expanded(flex: 2, child: _buildFilterSidebar()),
+
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white
+                            .withOpacity(0.045),
+                        borderRadius:
+                            BorderRadius.circular(9),
+                        border: Border.all(
+                          color: Colors.white
+                              .withOpacity(0.08),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.list_alt_rounded,
+                            size: 15,
+                            color:
+                                GlassTheme.cyan,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '$loadedDataAmount kayıt',
+                            style:
+                                const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 11,
+                              fontWeight:
+                                  FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-              ),
+
+                const SizedBox(height: 18),
+
+                // CONTENT
+                Expanded(
+                  child: LayoutBuilder(
+                    builder:
+                        (context, constraints) {
+                      final wide =
+                          constraints.maxWidth >=
+                              900;
+
+                      if (wide) {
+                        return Row(
+                          crossAxisAlignment:
+                              CrossAxisAlignment
+                                  .stretch,
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.vertical,
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: drawtable(),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(
+                              width: 16,
+                            ),
+                            Expanded(
+                              flex: 3,
+                              child:
+                                  _buildFilterSidebar(),
+                            ),
+                          ],
+                        );
+                      }
+
+                      return Column(
+                        children: [
+                          GlassPanel(
+                            title:
+                                'Filtre ve Veri',
+                            icon:
+                                Icons.tune_rounded,
+                            child:
+                                ExpansionTile(
+                              tilePadding:
+                                  EdgeInsets.zero,
+                              collapsedIconColor:
+                                  Colors.white54,
+                              iconColor:
+                                  GlassTheme.cyan,
+                              title:
+                                  const Text(
+                                'Filtreleri Göster',
+                                style:
+                                    TextStyle(
+                                  color:
+                                      Colors.white,
+                                  fontSize: 13,
+                                  fontWeight:
+                                      FontWeight.w600,
+                                ),
+                              ),
+                              children: [
+                                _buildFilterPanel(),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(
+                            height: 14,
+                          ),
+                          Expanded(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.vertical,
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: drawtable(),
+                              ),
+                            ),
+                          )
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-      );
-      }
+          ),
+        ),
+      ),
     );
-
-
   }
-
 }
 
+class _GlassActionButton
+    extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  const _GlassActionButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 42,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor:
+              GlassTheme.cyan.withOpacity(0.10),
+          foregroundColor:
+              GlassTheme.cyan,
+          elevation: 0,
+          padding:
+              const EdgeInsets.symmetric(
+            horizontal: 12,
+          ),
+          shape:
+              RoundedRectangleBorder(
+            borderRadius:
+                BorderRadius.circular(10),
+            side: BorderSide(
+              color: GlassTheme.cyan
+                  .withOpacity(0.20),
+            ),
+          ),
+        ),
+        icon: Icon(
+          icon,
+          size: 16,
+        ),
+        label: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+}

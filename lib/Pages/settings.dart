@@ -1,4 +1,5 @@
-import 'package:app1/Pages/home.dart';
+import 'package:app1/Pages/new_home.dart';
+import 'package:app1/Theme/dashboard_theme.dart';
 import 'package:app1/main.dart';
 import 'package:app1/utils/auth_service.dart';
 import 'package:app1/utils/database_models.dart';
@@ -2012,11 +2013,10 @@ class SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  //// ==================== DATABASE OPTIONS ====================
-
   @override
   Widget build(BuildContext context) {
     final query = _searchQuery.trim().toLowerCase();
+
     final filtered = query.isEmpty
         ? _actions
         : _actions.where((a) {
@@ -2026,60 +2026,162 @@ class SettingsPageState extends State<SettingsPage> {
           }).toList();
 
     final Map<String, List<_SettingsAction>> grouped = {};
+
     for (final action in filtered) {
       grouped.putIfAbsent(action.section, () => []).add(action);
     }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF4F5F7),
-      appBar: AppBar(
-        centerTitle: true,
-        elevation: 0,
-        title: const Text(
-          'Ahmediye K.I.O.S.K',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-        ),
-        backgroundColor: const Color(0xFF2E2E33),
-      ),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 640),
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-                  child: _SearchField(
-                    onChanged: (v) => setState(() => _searchQuery = v),
+    return GlassBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            top: MediaQuery.of(context).padding.top + 16,
+            left: 20,
+            right: 20,
+            bottom: 32,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ───────────────── HEADER ─────────────────
+
+              Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(
+                      Icons.arrow_back_rounded,
+                      color: GlassTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Ayarlar',
+                          style: TextStyle(
+                            color: GlassTheme.textPrimary,
+                            fontSize: 21,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Veri, bağlantı ve sistem işlemleri',
+                          style: TextStyle(
+                            color: GlassTheme.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // ───────────────── SEARCH ─────────────────
+
+              _SearchField(
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+              ),
+
+              const SizedBox(height: 20),
+
+              // ───────────────── ACTIONS ─────────────────
+
+              if (grouped.isEmpty)
+                const GlassPanel(
+                  title: 'Sonuç',
+                  icon: Icons.search_off_rounded,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text(
+                        'Sonuç bulunamadı.',
+                        style: TextStyle(
+                          color: GlassTheme.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              else
+                ...grouped.entries.map(
+                  (entry) => Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: GlassPanel(
+                      title: entry.key,
+                      icon: _sectionIcon(entry.key),
+                      child: Column(
+                        children: [
+                          for (int i = 0;
+                              i < entry.value.length;
+                              i++) ...[
+                            _ActionTile(
+                              action: entry.value[i],
+                              onTap: _isRunning
+                                  ? null
+                                  : () => _showConfirmDialog(
+                                        context,
+                                        entry.value[i],
+                                      ),
+                            ),
+
+                            if (i != entry.value.length - 1)
+                              Divider(
+                                height: 1,
+                                color: Colors.white.withOpacity(0.06),
+                              ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-                Expanded(
-                  child: grouped.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'Sonuç bulunamadı.',
-                            style: TextStyle(color: Colors.grey),
-                          ),
-                        )
-                      : ListView(
-                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                          children: grouped.entries.map((entry) {
-                            return _SettingsSection(
-                              title: entry.key,
-                              actions: entry.value,
-                              onAction: _isRunning
-                                  ? null
-                                  : (action) => _showConfirmDialog(context, action),
-                            );
-                          }).toList(),
-                        ),
-                ),
-              ],
-            ),
+            ],
           ),
         ),
       ),
     );
+  }
+
+  IconData _sectionIcon(String section) {
+    switch (section) {
+      case 'Bağlantı':
+        return Icons.wifi_rounded;
+
+      case 'Veri Yönetimi':
+        return Icons.manage_search_rounded;
+
+      case 'Veri Çekme':
+        return Icons.download_rounded;
+
+      case 'Veri İtme':
+        return Icons.upload_rounded;
+
+      case 'Veri Silme':
+        return Icons.delete_outline_rounded;
+
+      case 'Sıfırlama':
+        return Icons.restart_alt_rounded;
+
+      case 'Komut':
+        return Icons.terminal_rounded;
+
+      default:
+        return Icons.settings_rounded;
+    }
   }
 
   void _showConfirmDialog(BuildContext context, _SettingsAction action) {
@@ -2227,21 +2329,43 @@ class _SettingsAction {
 class _SearchField extends StatelessWidget {
   final ValueChanged<String> onChanged;
 
-  const _SearchField({required this.onChanged});
+  const _SearchField({
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      onChanged: onChanged,
-      decoration: InputDecoration(
-        hintText: 'Aksiyon ara...',
-        prefixIcon: const Icon(Icons.search_rounded),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.045),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.09),
+        ),
+      ),
+      child: TextField(
+        onChanged: onChanged,
+        style: const TextStyle(
+          color: GlassTheme.textPrimary,
+          fontSize: 13,
+        ),
+        cursorColor: GlassTheme.cyan,
+        decoration: InputDecoration(
+          hintText: 'Aksiyon ara...',
+          hintStyle: const TextStyle(
+            color: GlassTheme.textSecondary,
+            fontSize: 13,
+          ),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: GlassTheme.textSecondary,
+            size: 20,
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
         ),
       ),
     );
@@ -2310,75 +2434,128 @@ class _ActionTile extends StatelessWidget {
   final _SettingsAction action;
   final VoidCallback? onTap;
 
-  const _ActionTile({required this.action, required this.onTap});
+  const _ActionTile({
+    required this.action,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final disabled = onTap == null;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 6,
+            vertical: 12,
+          ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // ICON
               Container(
-                width: 42,
-                height: 42,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
-                  color: action.color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(12),
+                  color: action.color.withOpacity(
+                    disabled ? 0.04 : 0.09,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: action.color.withOpacity(
+                      disabled ? 0.05 : 0.13,
+                    ),
+                  ),
                 ),
-                child: Icon(action.icon, color: action.color, size: 22),
+                child: Icon(
+                  action.icon,
+                  size: 18,
+                  color: action.color.withOpacity(
+                    disabled ? 0.35 : 1,
+                  ),
+                ),
               ),
-              const SizedBox(width: 14),
+
+              const SizedBox(width: 12),
+
+              // TEXT
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Flexible(
+                        Expanded(
                           child: Text(
                             action.title,
-                            style: const TextStyle(
-                              fontSize: 15.5,
+                            style: TextStyle(
+                              color: GlassTheme.textPrimary.withOpacity(
+                                disabled ? 0.45 : 1,
+                              ),
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF1F1F23),
                             ),
                           ),
                         ),
+
                         if (action.badge != null) ...[
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
-                              color: Colors.orange.withOpacity(0.15),
+                              color: action.color.withOpacity(0.08),
                               borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: action.color.withOpacity(0.12),
+                              ),
                             ),
                             child: Text(
                               action.badge!,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.orange,
+                              style: TextStyle(
+                                color: action.color,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
                         ],
                       ],
                     ),
-                    const SizedBox(height: 4),
+
+                    const SizedBox(height: 3),
+
                     Text(
                       action.description,
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF8A8A8F), height: 1.3),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: GlassTheme.textSecondary.withOpacity(
+                          disabled ? 0.35 : 1,
+                        ),
+                        fontSize: 11,
+                        height: 1.35,
+                      ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_right_rounded, color: Color(0xFFC4C4C8)),
+
+              const SizedBox(width: 10),
+
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: GlassTheme.textSecondary.withOpacity(
+                  disabled ? 0.2 : 0.6,
+                ),
+              ),
             ],
           ),
         ),
